@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Hitam sebagai warna utama */
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* 🔥 INI PENTING UNTUK BORDER DAN RADIUS */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 3.9%;
+
+    --radius: 0.75rem; /* Ubah radius default (0.5rem → 0.75rem biar lebih lembut) */
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Tambahan untuk seluruh card/shadcn component */
+  .card {
+    @apply border border-border rounded-lg bg-card text-card-foreground shadow-sm;
+  }
+}
