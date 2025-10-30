@@ -1,6 +1,5 @@
-export class TokenPayload {
+interface TokenPayload {
   username: string;
   description: string;
   warehouseId: string;
-  jti: string;
 }

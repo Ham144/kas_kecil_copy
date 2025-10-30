@@ -13,18 +13,14 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import { AlertDialog, Button, Card } from "@radix-ui/themes";
 
-interface Warehouse {
-  id: string;
-  name: string;
-  budgets: number;
-}
+import type { Warehouse } from "@/types/warehouse";
 
 interface WarehouseTableProps {
   warehouses: Warehouse[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAdd: () => void;
-  onEdit: (warehouse: { id: string; name: string }) => void;
+  onEdit: (warehouse: Warehouse) => void;
   onDelete: (id: string) => void;
 }
 
@@ -155,14 +151,14 @@ export function WarehouseTable({
                         {warehouse.name}
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {warehouse.budgets} budget
+                        {warehouse.budgets || 0} budget
                         {warehouse.budgets !== 1 ? "s" : ""}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="1"
                             onClick={() =>
                               setExpandedId(
                                 expandedId === warehouse.id
@@ -183,10 +179,8 @@ export function WarehouseTable({
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              onEdit({ id: warehouse.id, name: warehouse.name })
-                            }
+                            size="1"
+                            onClick={() => onEdit(warehouse)}
                             className="gap-1"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -196,7 +190,7 @@ export function WarehouseTable({
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="1"
                             onClick={() => setDeleteId(warehouse.id)}
                             className="gap-1 text-destructive hover:text-destructive"
                           >
@@ -229,7 +223,7 @@ export function WarehouseTable({
                               >
                                 <Dialog.Trigger asChild>
                                   <Button
-                                    size="sm"
+                                    size="1"
                                     variant="outline"
                                     className="gap-1 bg-slate-800 flex items-center rounded-lg text-xs  text-white p-3 hover:bg-primary/10"
                                     onClick={() => {

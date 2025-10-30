@@ -10,12 +10,14 @@ import {
   DialogTitle,
 } from "@radix-ui/react-dialog";
 import { Button } from "@radix-ui/themes";
+import type { Warehouse } from "@/types/warehouse";
 
 interface WarehouseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string) => void;
+  onSave: (data: { name: string; location?: string; description?: string }) => void;
   initialName?: string;
+  initialWarehouse?: Warehouse | null;
 }
 
 export function WarehouseModal({
@@ -23,27 +25,44 @@ export function WarehouseModal({
   onClose,
   onSave,
   initialName,
+  initialWarehouse,
 }: WarehouseModalProps) {
-  const [name, setName] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    location: "",
+    description: "",
+  });
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
-      setName(initialName || "");
+      if (initialWarehouse) {
+        setFormData({
+          name: initialWarehouse.name || "",
+          location: initialWarehouse.location || "",
+          description: initialWarehouse.description || "",
+        });
+      } else {
+        setFormData({
+          name: initialName || "",
+          location: "",
+          description: "",
+        });
+      }
       setError("");
     }
-  }, [isOpen, initialName]);
+  }, [isOpen, initialName, initialWarehouse]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
+    if (!formData.name.trim()) {
       setError("Warehouse name is required");
       return;
     }
 
-    onSave(name);
-    setName("");
+    onSave(formData);
+    setFormData({ name: "", location: "", description: "" });
     setError("");
   };
 
@@ -66,15 +85,45 @@ export function WarehouseModal({
             </label>
             <input
               type="text"
-              value={name}
+              value={formData.name}
               onChange={(e) => {
-                setName(e.target.value);
+                setFormData({ ...formData, name: e.target.value });
                 setError("");
               }}
               placeholder="e.g., Warehouse A - Jakarta"
               className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              Location
+            </label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => {
+                setFormData({ ...formData, location: e.target.value });
+              }}
+              placeholder="e.g., Jakarta"
+              className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+              }}
+              placeholder="Warehouse description..."
+              rows={3}
+              className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -90,7 +139,7 @@ export function WarehouseModal({
               type="submit"
               className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {initialName ? "Update" : "Create"}
+              {initialWarehouse || initialName ? "Update" : "Create"}
             </Button>
           </div>
         </form>

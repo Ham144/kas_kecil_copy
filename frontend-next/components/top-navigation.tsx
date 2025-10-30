@@ -14,10 +14,20 @@ import { redirect, usePathname } from "next/navigation";
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Button } from "@radix-ui/themes";
+import { useMutation } from "@tanstack/react-query";
+import { AuthApi } from "@/api/auth";
 
 export function TopNavigation() {
   const pathname = usePathname();
   const [isUserPopoverOpen, setIsUserPopoverOpen] = useState(false);
+
+  const { mutateAsync: handleLogout } = useMutation({
+    mutationKey: ["logout"],
+    mutationFn: AuthApi.logout,
+    onSuccess: () => {
+      redirect("/login");
+    },
+  });
 
   const userInfo = {
     username: "John Doe",
@@ -130,7 +140,7 @@ export function TopNavigation() {
           <Button
             variant="ghost"
             className="gap-2 flex items-center"
-            onClick={() => redirect("/login")}
+            onClick={() => handleLogout()}
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline">Logout</span>

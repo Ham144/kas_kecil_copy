@@ -1,21 +1,31 @@
 "use client";
 
-import type React from "react";
-
 import { useState } from "react";
 import { toast } from "sonner";
-import * as Form from "@radix-ui/react-form";
 import Image from "next/image";
 import { Lock, User } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { AuthApi } from "@/api/auth";
 
 export function LoginForm() {
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "yafizham",
     password: "Catur2025!",
   });
-
-  console.log("aw")
+  
+  const { mutateAsync: handleLogin, isPending: isLoading } = useMutation({
+    mutationKey: ['login'],
+    mutationFn: AuthApi.loginUserLdap,
+    onSuccess: (data) => {
+      router.push("/");
+    },
+    onError: (err: any) => {
+      const errorMessage = err.response?.data?.message || err.message || "Gagal login. Periksa kembali username dan password Anda.";
+      toast.error(errorMessage);
+    },
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,29 +35,9 @@ export function LoginForm() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.username || !formData.password) {
-      toast.error("Mohon isi semua field");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Simulate API call
-      window.location.href = "/";
-
-      toast.success("Login berhasil!");
-
-      // TODO: Redirect to dashboard after successful login
-    } catch (error) {
-      console.log(error);
-      toast.error("Login gagal. Silakan coba lagi.");
-      console.error("[v0] Login error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    await handleLogin(formData);
   };
 
   return (
@@ -60,13 +50,14 @@ export function LoginForm() {
             alt="Logo"
             className="object-contain"
             fill
+            priority
           />
         </div>
       </div>
 
       {/* Form Card */}
       <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
-        <Form.Root onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Helper Text */}
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
@@ -75,54 +66,48 @@ export function LoginForm() {
           </div>
 
           {/* Username Field */}
-          <Form.Field name="username" className="space-y-2">
-            <Form.Label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
               <User className="w-4 h-4 text-muted-foreground" />
               Username
-            </Form.Label>
-            <Form.Control asChild>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="ham"
-                className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors"
-                disabled={isLoading}
-              />
-            </Form.Control>
-          </Form.Field>
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="ham"
+              className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors"
+              disabled={isLoading}
+            />
+          </div>
 
           {/* Password Field */}
-          <Form.Field name="password" className="space-y-2">
-            <Form.Label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
               <Lock className="w-4 h-4 text-muted-foreground" />
               Password
-            </Form.Label>
-            <Form.Control asChild>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="********"
-                className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors"
-                disabled={isLoading}
-              />
-            </Form.Control>
-          </Form.Field>
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="********"
+              className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors"
+              disabled={isLoading}
+            />
+          </div>
 
           {/* Submit Button */}
-          <Form.Submit asChild>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-            >
-              {isLoading ? "Memproses..." : "Masuk"}
-            </button>
-          </Form.Submit>
-        </Form.Root>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          >
+            {isLoading ? "Memproses..." : "Masuk"}
+          </button>
+        </form>
       </div>
 
       {/* Footer Text */}

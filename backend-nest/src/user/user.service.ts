@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { PrismaService } from 'src/common/prisma.service';
 import { ValidationService } from 'src/common/validation.service';
@@ -7,8 +7,10 @@ import { LoginRequestLdapDto, LoginResponseDto } from 'src/models/user.model';
 import { UserValidation } from './user.validation';
 import * as LdapClient from 'ldapjs-client';
 import { ErrorResponse } from 'src/models/error.model';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { TokenPayload } from 'src/models/tokenPayload.model';
+import { RedisService } from 'src/redis/redis.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UserService {
@@ -16,16 +18,28 @@ export class UserService {
     private validationService: ValidationService,
     @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     private prismaService: PrismaService,
+    private redis: RedisService,
   ) {}
 
   async loginUser(
     body: LoginRequestLdapDto,
+    req: any,
   ): Promise<LoginResponseDto | ErrorResponse> {
     this.validationService.validate(UserValidation.LOGIN, body);
 
     const globalSetting = await this.prismaService.globalsetting.findFirst({
       where: { inUse: true },
     });
+
+    // Cek apakah globalSetting ada
+    if (!globalSetting) {
+      return {
+        statusCode: 500,
+        message:
+          'Global setting tidak ditemukan. Silakan setup konfigurasi LDAP terlebih dahulu.',
+        error: 'GLOBAL_SETTING_NOT_FOUND',
+      };
+    }
 
     //LDAP/ AD
     const client = new LdapClient({
@@ -164,68 +178,121 @@ export class UserService {
       user = transactionResult;
     }
 
-    // 2FA pending flow: if user has 2FA enabled, do not issue cookies yet
-    if (user?.two_faIsVerified) {
-      const pendingToken = jwt.sign(
-        {
-          method: 'ldap',
-          twoFA: true,
-          stage: 'pending',
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '5m' },
-      );
-
-      return {
-        description: userLDAP['description'],
-        displayName: userLDAP['displayName'],
-        token: pendingToken,
-        warehouse: user.warehouse,
-        two_faIsVerified: user.two_faIsVerified,
-        username: user.username,
-      };
-    }
     const payload: TokenPayload = {
       username: user.username,
       description: user.description,
       warehouseId: user.warehouseId,
+      jti: randomUUID(),
     };
 
-    this.logger.debug(`payload: ${JSON.stringify(payload)}`);
+    // Generate JWT tokens using reusable method
+    const access_token = this.generateToken(payload, 'access');
+    const refresh_token = this.generateToken(payload, 'refresh');
 
-    const generateTokenJWT = async (payload: TokenPayload) => {
-      try {
-        const token = jwt.sign(payload, process.env.JWT_SECRET, {
-          expiresIn: '7d',
-        });
-        return token;
-      } catch (error) {
-        return null;
-      }
-    };
-
-    const access_token = await generateTokenJWT(payload);
-
-    const refresh_token = await generateTokenJWT(payload);
-
-    await this.prismaService.user.update({
-      where: {
-        username: body.username,
-      },
-      data: {
-        refreshToken: refresh_token,
-      },
-    });
+    //simpan refresh_token ke redis
+    await this.redis.set(
+      payload.jti,
+      JSON.stringify({
+        username: payload.username,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      }),
+      604800, // 1 minggu
+    );
 
     return {
       username: user.username,
       displayName: user.displayName,
       description: user.description,
-      token: access_token,
       warehouse: user.warehouse,
       two_faIsVerified: user.two_faIsVerified,
       refresh_token: refresh_token,
       access_token: access_token,
     };
+  }
+
+  async refreshToken(refresh_token: string) {
+    if (!refresh_token) throw new UnauthorizedException('No refresh token');
+
+    try {
+      const oldPayload: TokenPayload = await jwt.verify(
+        refresh_token,
+        process.env.JWT_SECRET_REFRESH,
+      );
+
+      const isJtiFound = await this.redis.get(oldPayload.jti);
+
+      console.log('jti found? ', isJtiFound);
+
+      if (!isJtiFound)
+        throw new UnauthorizedException('Session anda telah dicabut (redis)');
+
+      const userDB = await this.prismaService.user.findFirst({
+        where: {
+          username: oldPayload.username,
+        },
+        include: {
+          warehouse: true,
+        },
+      });
+
+      if (!userDB) throw new UnauthorizedException('Akun anda telah dihapus');
+
+      const newJti = randomUUID();
+      const newPayload: TokenPayload = {
+        username: userDB.username,
+        description: userDB?.description,
+        warehouseId: userDB.warehouseId,
+        jti: newJti as unknown as string,
+      };
+
+      const accessToken = await this.generateToken(newPayload, 'access');
+      const refreshToken = await this.generateToken(newPayload, 'refresh'); //perbarui juga refresh Token (metode yang dipakai oleh: Google, AWS Cognito, Auth0, Clerk)
+
+      return {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      };
+    } catch (err) {
+      console.log(err);
+      throw new UnauthorizedException('Session Anda telah habis, login ulang');
+    }
+  }
+
+  async logout(access_token: string, req: any) {
+    if (!access_token) {
+      throw new UnauthorizedException('Error testing');
+      console.log('delete refresh_token dan access_token');
+    }
+    const oldPayload: TokenPayload = await jwt.verify(
+      access_token,
+      process.env.JWT_SECRET,
+    );
+
+    await this.redis.del(oldPayload.jti);
+    return {
+      message: 'redis jti deleted',
+    };
+  }
+  // Reusable token generator
+  private generateToken(
+    payload: TokenPayload,
+    type: 'access' | 'refresh' = 'access',
+  ): string | null {
+    try {
+      const secret =
+        type === 'access'
+          ? process.env.JWT_SECRET
+          : process.env.JWT_SECRET_REFRESH;
+      const expiresIn = type === 'access' ? '10m' : '7d';
+      if (!secret) {
+        this.logger.error(`JWT secret for ${type} token is not defined!`);
+        return null;
+      }
+      return jwt.sign(payload, secret, { expiresIn });
+    } catch (error) {
+      this.logger.error(`Error generating ${type} token:`, error);
+      return null;
+    }
   }
 }

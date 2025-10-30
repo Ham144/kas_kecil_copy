@@ -6,54 +6,93 @@ import { toast } from "sonner";
 import { WarehouseModal } from "../../components/warehouse-modal";
 import { WarehouseTable } from "../../components/warehouse-table";
 import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { WarehouseApi } from "@/api/warehouse";
+import type { Warehouse, WarehouseCreateDto, WarehouseUpdateDto } from "@/types/warehouse";
 
 export default function WarehousePage() {
-  const [warehouses, setWarehouses] = useState([
-    { id: "1", name: "Warehouse A - Jakarta", budgets: 3 },
-    { id: "2", name: "Warehouse B - Surabaya", budgets: 2 },
-    { id: "3", name: "Warehouse C - Bandung", budgets: 5 },
-  ]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingWarehouse, setEditingWarehouse] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // Fetch warehouses
+  const { data: warehouses = [], isLoading } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: WarehouseApi.getWarehouses,
+  });
+
+  // Create warehouse mutation
+  const createMutation = useMutation({
+    mutationFn: WarehouseApi.createWarehouse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      toast.success("Warehouse berhasil dibuat");
+      setIsModalOpen(false);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error.message || "Gagal membuat warehouse";
+      toast.error(errorMessage);
+    },
+  });
+
+  // Update warehouse mutation
+  const updateMutation = useMutation({
+    mutationFn: WarehouseApi.updateWarehouse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      toast.success("Warehouse berhasil diupdate");
+      setIsModalOpen(false);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error.message || "Gagal mengupdate warehouse";
+      toast.error(errorMessage);
+    },
+  });
+
+  // Delete warehouse mutation
+  const deleteMutation = useMutation({
+    mutationFn: WarehouseApi.deleteWarehouse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      toast.success("Warehouse berhasil dihapus");
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error.message || "Gagal menghapus warehouse";
+      toast.error(errorMessage);
+    },
+  });
 
   const handleAddWarehouse = () => {
     setEditingWarehouse(null);
     setIsModalOpen(true);
   };
 
-  const handleEditWarehouse = (warehouse: { id: string; name: string }) => {
+  const handleEditWarehouse = (warehouse: Warehouse) => {
     setEditingWarehouse(warehouse);
     setIsModalOpen(true);
   };
 
   const handleDeleteWarehouse = (id: string) => {
-    setWarehouses((prev) => prev.filter((w) => w.id !== id));
-    toast("Warehouse deleted successfully");
+    if (confirm("Apakah Anda yakin ingin menghapus warehouse ini?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
-  const handleSaveWarehouse = (name: string) => {
+  const handleSaveWarehouse = (data: { name: string; location?: string; description?: string }) => {
     if (editingWarehouse) {
       // Edit mode
-      setWarehouses((prev) =>
-        prev.map((w) => (w.id === editingWarehouse.id ? { ...w, name } : w))
-      );
-      toast("Warehouse updated successfully");
+      const updateData: WarehouseUpdateDto = {
+        id: editingWarehouse.id,
+        ...data,
+      };
+      updateMutation.mutate(updateData);
     } else {
       // Create mode
-      const newWarehouse = {
-        id: Date.now().toString(),
-        name,
-        budgets: 0,
-      };
-      setWarehouses((prev) => [newWarehouse, ...prev]);
-      toast("Warehouse created successfully");
+      const createData: WarehouseCreateDto = data;
+      createMutation.mutate(createData);
     }
-    setIsModalOpen(false);
   };
 
   const filteredWarehouses = warehouses.filter((w) =>
@@ -104,7 +143,7 @@ export default function WarehousePage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveWarehouse}
-        initialName={editingWarehouse?.name}
+        initialWarehouse={editingWarehouse}
       />
     </div>
   );

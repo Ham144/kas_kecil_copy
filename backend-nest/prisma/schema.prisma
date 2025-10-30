@@ -20,7 +20,6 @@ model User {
   Globalsetting Globalsetting[]
   two_faIsVerified Boolean  @default(false)
   two_faSecret String? 
-  refreshToken String?
   authMethod AuthMethod @default(LDAP)
 }
 

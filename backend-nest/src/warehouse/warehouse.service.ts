@@ -88,10 +88,19 @@ export class WarehouseService {
     };
   }
 
-  async findAll(searchKey: string): Promise<WarehouseResponseDto[]> {
-    return await this.prismaService.warehouse.findMany({
-      include: { members: true },
-    });
+  async getWarehouses(searchKey?: string): Promise<WarehouseResponseDto[]> {
+    let data: WarehouseResponseDto[] = [];
+    if (searchKey) {
+      data = await this.prismaService.warehouse.findMany({
+        where: {
+          name: {
+            contains: searchKey,
+          },
+        },
+        include: { members: true },
+      });
+    }
+    return data;
   }
 
   async deleteWarehouse(id: string): Promise<WarehouseResponseDto[]> {

@@ -1,4 +1,4 @@
-import { Body, Controller, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
 import { WarehouseService } from './warehouse.service';
 import { WarehouseCreateDto, WarehouseUpdateDto } from 'src/models/warehouse.model';
 
@@ -12,8 +12,14 @@ export class WarehouseController {
     return this.warehouseService.createWarehouse(body);
   }
 
+  @Get("/list")
+  list(@Query('searchKey') searchKey?: string) {
+    return this.warehouseService.getWarehouses(searchKey);
+  }
+
   @Patch('/update')
   updateWarehouse(@Body() body: WarehouseUpdateDto) {
     return this.warehouseService.updateWarehouse(body);
   }
+  
 }
