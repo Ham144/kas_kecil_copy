@@ -1,5 +1,5 @@
 export class ErrorResponse {
-  statusCode: number;
+  statusCode?: number;
   message: string; //yang ditampilkan toast
   error?: string; //detail dari mesin
 }

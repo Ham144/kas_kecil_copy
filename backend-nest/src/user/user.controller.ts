@@ -8,26 +8,30 @@ import {
   Delete,
   Req,
   Res,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { Auth } from 'src/common/auth.decorator';
-import { LoginRequestLdapDto } from 'src/models/user.model';
+import { LoginRequestLdapDto, LoginResponseDto } from 'src/models/user.model';
 import { Response, Request } from 'express';
 import { refreshTokenOption, accessTokenOption } from './tokenCookieOptions';
+import { ErrorResponse } from 'src/models/error.model';
 
 @Controller('/api/user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('/login/ldap')
+  @Post('/login/ldap')
   async loginUserLdap(
     @Body() body: LoginRequestLdapDto,
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    const response = await this.userService.loginUser(body, req);
+    const response: LoginResponseDto | ErrorResponse =
+      await this.userService.loginUser(body, req);
 
-    if ('statusCode' in response) {
+    if (response instanceof ErrorResponse) {
       // berarti ini ErrorResponse
       console.error('Login gagal:', response.message);
       return res.status(response.statusCode).json(response);
@@ -66,12 +70,31 @@ export class UserController {
       message: 'Refresh token updated',
     };
   }
+
+  @Get('/get-user-info')
+  async getUserInfo(@Req() req: Request) {
+    return this.userService.getUserInfo(req);
+  }
+
+  @Get('/list')
+  async getAllAccount(
+    @Query('page', ParseIntPipe) page: number,
+    @Query('searchKey') searchKey: string,
+  ) {
+    return this.userService.getAllAccount(page, searchKey);
+  }
+
+  @Patch('/update')
+  async updateAccount(@Body() body: LoginResponseDto) {
+    return this.userService.updateAccount(body);
+  }
+
   @Delete('/logout')
   async logout(@Req() req: Request, @Res() res: Response) {
     const access_token = req?.cookies['access_token'];
     await this.userService.logout(access_token, req);
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
     return res.status(200).json({ message: 'Logout success' });
   }
 }

@@ -1,20 +1,20 @@
 import "./globals.css";
-import { Toaster } from "sonner";
 import QueryClientProviderWrapper from "../components/QueryClientProviderWrapper";
+import { UserProvider } from "@/components/UserContext";
+import ToasterProvider from "@/components/ToasterProvider";
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) { 
-  
-  
+}>) {
   return (
-    <html lang="en">
+    <html lang="id" data-theme="light">
       <body>
-        <Toaster position="top-center" />
         <QueryClientProviderWrapper>
-        {children}
+          <UserProvider>
+            <ToasterProvider>{children}</ToasterProvider>
+          </UserProvider>
         </QueryClientProviderWrapper>
       </body>
     </html>

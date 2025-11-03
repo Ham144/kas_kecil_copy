@@ -1,8 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
-  :root {
+  :root,
+  [data-theme="light"] {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -38,10 +40,66 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 
   /* Tambahan untuk seluruh card/shadcn component */
   .card {
     @apply border border-border rounded-lg bg-card text-card-foreground shadow-sm;
+  }
+
+  /* Override DaisyUI base styles untuk kompatibilitas */
+  .btn {
+    @apply border-border;
+    background-color: transparent;
+  }
+
+  .btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+  .btn-primary:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+
+  .btn-outline {
+    background-color: transparent;
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .btn-error {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border-color: hsl(var(--destructive));
+  }
+
+  .btn-error:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+  }
+
+  .modal {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-box {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Force light background untuk komponen yang gelap */
+  [data-theme="light"] {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  [data-theme="light"] .card,
+  [data-theme="light"] .modal-box {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
   }
 }

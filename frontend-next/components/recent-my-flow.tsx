@@ -1,15 +1,6 @@
 import { Calendar, Tag, DollarSign } from "lucide-react";
 
-interface Expense {
-  id: number;
-  title: string;
-  amount: number;
-  date: string;
-  note: string;
-  category: string;
-}
-
-export function RecentMyFlow({ expenses }: { expenses: Expense[] }) {
+export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -36,12 +27,12 @@ export function RecentMyFlow({ expenses }: { expenses: Expense[] }) {
       </div>
 
       <div className="divide-y divide-border">
-        {expenses.length === 0 ? (
+        {logs?.length === 0 ? (
           <div className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">No expenses yet</p>
+            <p className="text-sm text-muted-foreground">No logs yet</p>
           </div>
         ) : (
-          expenses.map((expense) => (
+          logs?.map((expense) => (
             <div
               key={expense.id}
               className="p-4 hover:bg-muted/30 transition-colors"

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { TopNavigation } from "../../components/top-navigation";
 import { RecentMyFlow } from "../../components/recent-my-flow";
 import { RevenueForm } from "../../components/revenue-form";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export default function RevenuePage() {
   const [revenues, setRevenues] = useState([
@@ -33,9 +35,20 @@ export default function RevenuePage() {
     },
   ]);
 
-  const handleSubmitExpense = (newExpense: any) => {
-    setRevenues([newExpense, ...revenues.slice(0, 2)]);
-  };
+  const { mutateAsync: handleSubmitRevenue } = useMutation({
+    mutationKey: ["revenues"],
+    mutationFn: async () => {},
+    onSuccess: () => {
+      toast.success("Expense submitted successfully");
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Gagal membuat catatan";
+      toast.error(errorMessage);
+    },
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,12 +58,12 @@ export default function RevenuePage() {
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Expense Form */}
             <div className="lg:col-span-2">
-              <RevenueForm onSubmit={handleSubmitExpense} />
+              <RevenueForm onSubmit={handleSubmitRevenue} />
             </div>
 
             {/* Recent revenues */}
             <div className="lg:col-span-1">
-              <RecentMyFlow expenses={revenues} />
+              <RecentMyFlow logs={revenues} />
             </div>
           </div>
         </div>

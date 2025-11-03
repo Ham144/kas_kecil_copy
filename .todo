@@ -3,3 +3,12 @@ konsep:
 setup WareHouse dan target biaya : e.g: mangga dua 23.000.000
 setup kas: 
 setup biaya apa saja: parkir, BBM
+
+[x] redis with postgresql setup 
+[x] auth
+[x] WareHouse
+[x] budgets
+[x] Flow Log category
+[x] global setting
+[] expense
+[] revenue

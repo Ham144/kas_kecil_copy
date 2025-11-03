@@ -2,7 +2,7 @@ export interface WarehouseCreateDto {
   name: string;
   location?: string;
   description?: string;
-  // Tambahkan field lain sesuai kebutuhan
+  members?: string[];
 }
 
 export interface WarehouseUpdateDto {
@@ -10,16 +10,14 @@ export interface WarehouseUpdateDto {
   name?: string;
   location?: string;
   description?: string;
-  // Tambahkan field lain sesuai kebutuhan
+  members?: string[];
 }
 
 export interface Warehouse {
   id: string;
   name: string;
-  location?: string;
-  description?: string;
-  budgets?: number;
-  createdAt?: string;
-  updatedAt?: string;
-  // Tambahkan field lain sesuai kebutuhan
+  location?: string | null;
+  description?: string | null;
+  members: string[];
+  budgetsCount: number;
 }

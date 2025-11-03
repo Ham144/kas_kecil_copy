@@ -22,13 +22,17 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if it's a 401 error
-    const is401 = error.response?.status === 401;
+    // Check if it's a 401 or 403 error (token expired or missing)
+    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
     const isRefreshEndpoint = originalRequest?.url?.includes(
-      "/api/auth/refresh-token"
+      "/api/user/refresh-token"
     );
+    const isLoginEndpoint = originalRequest?.url?.includes(
+      "/api/user/login/ldap"
+    );
+    const isPublicRoute = isLoginEndpoint || isRefreshEndpoint;
 
-    if (is401 && !originalRequest._retry && !isRefreshEndpoint) {
+    if (isAuthError && !originalRequest._retry && !isPublicRoute) {
       if (isRefreshing) {
         // Queue the request until refresh is done
         return new Promise((resolve) => {
@@ -57,8 +61,12 @@ axiosInstance.interceptors.response.use(
         const isOnLogin =
           typeof window !== "undefined" &&
           window.location.pathname === "/login";
-        if (refreshError.response?.status === 401 && !isOnLogin) {
+        // Clear any stale cookies and redirect to login
+        if (!isOnLogin) {
           try {
+            // Clear cookies if refresh failed
+            document.cookie = 'access_token=; path=/; max-age=0';
+            document.cookie = 'refresh_token=; path=/; max-age=0';
             window.location.href = "/login";
           } catch (_) {}
         }

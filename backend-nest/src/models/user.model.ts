@@ -3,8 +3,7 @@ export class LoginResponseDto {
   username: string;
   displayName: string;
   warehouse: object;
-  two_faIsVerified: boolean;
-  twoFARequired?: boolean;
+  isActive?: boolean;
   refresh_token?: string;
   access_token?: string;
 }

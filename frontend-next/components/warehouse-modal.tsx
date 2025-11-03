@@ -10,24 +10,24 @@ import {
   DialogTitle,
 } from "@radix-ui/react-dialog";
 import { Button } from "@radix-ui/themes";
-import type { Warehouse } from "@/types/warehouse";
+import type { WarehouseCreateDto, Warehouse } from "@/types/warehouse";
 
 interface WarehouseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; location?: string; description?: string }) => void;
-  initialName?: string;
+  onSave: (data: WarehouseCreateDto) => void;
   initialWarehouse?: Warehouse | null;
+  isSubmitting?: boolean;
 }
 
 export function WarehouseModal({
   isOpen,
   onClose,
   onSave,
-  initialName,
   initialWarehouse,
+  isSubmitting = false,
 }: WarehouseModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<WarehouseCreateDto>({
     name: "",
     location: "",
     description: "",
@@ -43,38 +43,46 @@ export function WarehouseModal({
           description: initialWarehouse.description || "",
         });
       } else {
-        setFormData({
-          name: initialName || "",
-          location: "",
-          description: "",
-        });
+        setFormData({ name: "", location: "", description: "" });
       }
       setError("");
     }
-  }, [isOpen, initialName, initialWarehouse]);
+  }, [isOpen, initialWarehouse]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim()) {
+    if (!formData.name?.trim()) {
       setError("Warehouse name is required");
       return;
     }
 
-    onSave(formData);
+    onSave({
+      name: formData.name,
+      location: formData.location,
+      description: formData.description,
+    });
     setFormData({ name: "", location: "", description: "" });
     setError("");
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) {
+      onClose();
+    }
+  };
+
+  const isEditMode = Boolean(initialWarehouse);
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-white p-3  shadow-md border rounded-lg absolute w-full mx-auto container flex flex-col justify-center  top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
         <DialogTitle>
-          {initialName ? "Edit Warehouse" : "Add Warehouse"}
+          {isEditMode ? "Edit Warehouse" : "Add Warehouse"}
         </DialogTitle>
         <DialogDescription>
-          {initialName
-            ? "Update the warehouse name"
+          {isEditMode
+            ? "Update the warehouse details"
             : "Create a new warehouse location"}
         </DialogDescription>
 
@@ -102,7 +110,7 @@ export function WarehouseModal({
             </label>
             <input
               type="text"
-              value={formData.location}
+              value={formData.location ?? ""}
               onChange={(e) => {
                 setFormData({ ...formData, location: e.target.value });
               }}
@@ -116,7 +124,7 @@ export function WarehouseModal({
               Description
             </label>
             <textarea
-              value={formData.description}
+              value={formData.description ?? ""}
               onChange={(e) => {
                 setFormData({ ...formData, description: e.target.value });
               }}
@@ -130,16 +138,18 @@ export function WarehouseModal({
             <Button
               type="button"
               variant="soft"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 rounded-xl bg-transparent"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={isSubmitting}
             >
-              {initialWarehouse || initialName ? "Update" : "Create"}
+              {isSubmitting ? "Saving..." : isEditMode ? "Update" : "Create"}
             </Button>
           </div>
         </form>

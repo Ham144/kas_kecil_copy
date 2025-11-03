@@ -1,12 +1,17 @@
 export class WarehouseResponseDto {
   id: string;
   name: string;
-  members: object[];
+  location?: string | null;
+  description?: string | null;
+  members: string[];
+  budgetsCount: number;
 }
 
 export class WarehouseDetailResponseDto {
   id: string;
   name: string;
+  location?: string | null;
+  description?: string | null;
   budgets?: object[];
   flowLogs?: object[];
   members?: object[];
@@ -14,12 +19,22 @@ export class WarehouseDetailResponseDto {
 
 export class WarehouseCreateDto {
   name: string;
-  members: string[]; //username
+  location?: string;
+  description?: string;
+  members?: string[]; //username
+}
+
+export class BudgetCreate {
+  month: number;
+  year: number;
+  amount: number;
 }
 
 export class WarehouseUpdateDto {
   id: string;
   name?: string;
-  budgets?: number;
+  location?: string;
+  description?: string;
   members?: string[];
+  budgets?: BudgetCreate[];
 }

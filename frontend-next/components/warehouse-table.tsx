@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Search,
   Plus,
@@ -11,9 +11,12 @@ import {
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
-import { AlertDialog, Button, Card } from "@radix-ui/themes";
-
+import { Button, Card } from "@radix-ui/themes";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { BudgetApi } from "@/api/budget";
 import type { Warehouse } from "@/types/warehouse";
+import type { Budget, BudgetCreateDto, BudgetUpdateDto } from "@/types/budget";
+import { WarehouseApi } from "@/api/warehouse";
 
 interface WarehouseTableProps {
   warehouses: Warehouse[];
@@ -32,48 +35,190 @@ export function WarehouseTable({
   onEdit,
   onDelete,
 }: WarehouseTableProps) {
+  const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(
     null
   );
   const [budgetForm, setBudgetForm] = useState({
-    month: 10,
-    year: 2025,
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
     amount: "",
   });
 
-  const mockBudgets = {
-    "1": [
-      { month: 10, year: 2025, amount: 5000000 },
-      { month: 9, year: 2025, amount: 4500000 },
-      { month: 8, year: 2025, amount: 6000000 },
-    ],
-    "2": [
-      { month: 10, year: 2025, amount: 3000000 },
-      { month: 9, year: 2025, amount: 3500000 },
-    ],
-    "3": [
-      { month: 10, year: 2025, amount: 7000000 },
-      { month: 9, year: 2025, amount: 6500000 },
-      { month: 8, year: 2025, amount: 5500000 },
-      { month: 7, year: 2025, amount: 6000000 },
-      { month: 6, year: 2025, amount: 5800000 },
-    ],
+  // Fetch budgets for selected warehouse
+  const { data: budgets = [], isLoading: loadingBudgets } = useQuery<Budget[]>({
+    queryKey: ["budgets", selectedWarehouseId],
+    queryFn: () =>
+      selectedWarehouseId
+        ? BudgetApi.getBudgetsByWarehouse(selectedWarehouseId)
+        : Promise.resolve([]),
+    enabled: !!selectedWarehouseId && expandedId === selectedWarehouseId,
+  });
+
+  const deleteWarehouseMutation = useMutation({
+    mutationFn: async (id: string) => await WarehouseApi.deleteWarehouse(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
+      toast.success("Gudang berhasil dihapus");
+      setDeleteId(null);
+      const dialog = document.getElementById(
+        "delete-warehouse-confirm"
+      ) as HTMLDialogElement;
+      dialog?.close();
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Gagal menghapus gudang";
+      toast.error(errorMessage);
+    },
+  });
+
+  const handleDeleteWarehouseConfirm = async () => {
+    if (deleteId) {
+      deleteWarehouseMutation.mutate(deleteId);
+    }
   };
 
+  const createBudgetMutation = useMutation({
+    mutationFn: async (data: BudgetCreateDto) =>
+      await BudgetApi.createBudget(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["budgets", selectedWarehouseId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
+      toast.success("Budget berhasil dibuat");
+      setBudgetDialogOpen(false);
+      setBudgetForm({
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        amount: "",
+      });
+      setEditingBudget(null);
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Gagal membuat budget";
+      toast.error(errorMessage);
+    },
+  });
+
+  const updateBudgetMutation = useMutation({
+    mutationFn: async (data: BudgetUpdateDto) =>
+      await BudgetApi.updateBudget(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["budgets", selectedWarehouseId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
+      toast.success("Budget berhasil diupdate");
+      setBudgetDialogOpen(false);
+      setBudgetForm({
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        amount: "",
+      });
+      setEditingBudget(null);
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Gagal mengupdate budget";
+      toast.error(errorMessage);
+    },
+  });
+
+  const deleteBudgetMutation = useMutation({
+    mutationFn: async (id: string) => await BudgetApi.deleteBudget(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["budgets", selectedWarehouseId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
+      toast.success("Budget berhasil dihapus");
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Gagal menghapus budget";
+      toast.error(errorMessage);
+    },
+  });
+
   const handleAddBudget = () => {
-    if (!budgetForm.amount) {
-      toast.error("Please enter an amount");
+    if (!budgetForm.amount || !selectedWarehouseId) {
+      toast.error("Please fill all required fields");
       return;
     }
-    toast.success(
-      `Budget added for ${new Date(budgetForm.year, budgetForm.month - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
-    );
-    setBudgetDialogOpen(false);
-    setBudgetForm({ month: 10, year: 2025, amount: "" });
+
+    const amount = parseFloat(budgetForm.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a positive number");
+      return;
+    }
+
+    if (editingBudget) {
+      const updatePayload: BudgetUpdateDto = {
+        id: editingBudget.id,
+        month: budgetForm.month,
+        year: budgetForm.year,
+        amount,
+      };
+      updateBudgetMutation.mutate(updatePayload);
+    } else {
+      const createPayload: BudgetCreateDto = {
+        warehouseId: selectedWarehouseId,
+        month: budgetForm.month,
+        year: budgetForm.year,
+        amount,
+      };
+      createBudgetMutation.mutate(createPayload);
+    }
   };
+
+  const handleEditBudget = (budget: Budget) => {
+    setEditingBudget(budget);
+    setBudgetForm({
+      month: budget.month,
+      year: budget.year,
+      amount: budget.amount.toString(),
+    });
+    setBudgetDialogOpen(true);
+  };
+
+  const handleDeleteBudget = (budgetId: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this budget? This action cannot be undone."
+      )
+    ) {
+      deleteBudgetMutation.mutate(budgetId);
+    }
+  };
+
+  const handleOpenBudgetDialog = (warehouseId: string) => {
+    setSelectedWarehouseId(warehouseId);
+    setEditingBudget(null);
+    setBudgetForm({
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear(),
+      amount: "",
+    });
+    setBudgetDialogOpen(true);
+  };
+
+  const isSubmitting =
+    createBudgetMutation.isPending || updateBudgetMutation.isPending;
 
   return (
     <>
@@ -142,30 +287,30 @@ export function WarehouseTable({
                 </tr>
               ) : (
                 warehouses.map((warehouse) => (
-                  <>
-                    <tr
-                      key={warehouse.id}
-                      className="border-b border-border hover:bg-muted/20 transition-colors"
-                    >
+                  <React.Fragment key={warehouse.id}>
+                    <tr className="border-b border-border hover:bg-muted/20 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-foreground">
                         {warehouse.name}
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {warehouse.budgets || 0} budget
-                        {warehouse.budgets !== 1 ? "s" : ""}
+                        {warehouse.budgetsCount} budget
+                        {warehouse.budgetsCount !== 1 ? "s" : ""}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"
                             size="1"
-                            onClick={() =>
-                              setExpandedId(
+                            onClick={() => {
+                              const newExpandedId =
                                 expandedId === warehouse.id
                                   ? null
-                                  : warehouse.id
-                              )
-                            }
+                                  : warehouse.id;
+                              setExpandedId(newExpandedId);
+                              if (newExpandedId) {
+                                setSelectedWarehouseId(warehouse.id);
+                              }
+                            }}
                             className="gap-1"
                           >
                             {expandedId === warehouse.id ? (
@@ -191,7 +336,13 @@ export function WarehouseTable({
                           <Button
                             variant="ghost"
                             size="1"
-                            onClick={() => setDeleteId(warehouse.id)}
+                            onClick={() => {
+                              setDeleteId(warehouse.id);
+                              const dialog = document.getElementById(
+                                "delete-warehouse-confirm"
+                              ) as HTMLDialogElement;
+                              dialog?.showModal();
+                            }}
                             className="gap-1 text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -206,206 +357,291 @@ export function WarehouseTable({
                       <tr className="border-b border-border bg-muted/10">
                         <td colSpan={3} className="px-6 py-4">
                           <div className="space-y-3">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                              {warehouse.location ? (
+                                <span>
+                                  <strong>Location:</strong>{" "}
+                                  {warehouse.location}
+                                </span>
+                              ) : null}
+                              {warehouse.description ? (
+                                <span>
+                                  <strong>Description:</strong>{" "}
+                                  {warehouse.description}
+                                </span>
+                              ) : null}
+                              {warehouse.members.length > 0 ? (
+                                <span>
+                                  <strong>Members:</strong>{" "}
+                                  {warehouse.members.join(", ")}
+                                </span>
+                              ) : (
+                                <span>
+                                  <strong>Members:</strong> Belum ada anggota
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
                               <h4 className="font-medium text-foreground">
                                 Budgets
                               </h4>
-                              <Dialog.Root
-                                open={
-                                  budgetDialogOpen &&
-                                  selectedWarehouseId === warehouse.id
+                              <Button
+                                size="1"
+                                variant="outline"
+                                className="gap-1 bg-slate-800 flex items-center rounded-lg text-xs  text-white p-3 hover:bg-primary/10"
+                                onClick={() =>
+                                  handleOpenBudgetDialog(warehouse.id)
                                 }
-                                onOpenChange={(open) => {
-                                  setBudgetDialogOpen(open);
-                                  if (open)
-                                    setSelectedWarehouseId(warehouse.id);
-                                }}
                               >
-                                <Dialog.Trigger asChild>
-                                  <Button
-                                    size="1"
-                                    variant="outline"
-                                    className="gap-1 bg-slate-800 flex items-center rounded-lg text-xs  text-white p-3 hover:bg-primary/10"
-                                    onClick={() => {
-                                      setSelectedWarehouseId(warehouse.id);
-                                      setBudgetDialogOpen(true);
-                                    }}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                    Add Budget
-                                  </Button>
-                                </Dialog.Trigger>
-                                <Dialog.Portal>
-                                  <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
-                                  <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-lg">
-                                    <Dialog.Title className="text-lg font-semibold text-foreground">
-                                      Add Budget
-                                    </Dialog.Title>
-                                    <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                                      Add a new budget for {warehouse.name}
-                                    </Dialog.Description>
+                                <Plus className="h-3 w-3" />
+                                Add Budget
+                              </Button>
+                            </div>
+                            <Dialog.Root
+                              open={
+                                budgetDialogOpen &&
+                                selectedWarehouseId === warehouse.id
+                              }
+                              onOpenChange={(open) => {
+                                if (!open && !isSubmitting) {
+                                  setBudgetDialogOpen(false);
+                                  setEditingBudget(null);
+                                } else if (open) {
+                                  setSelectedWarehouseId(warehouse.id);
+                                  setBudgetDialogOpen(true);
+                                }
+                              }}
+                            >
+                              <Dialog.Portal>
+                                <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
+                                <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-lg">
+                                  <Dialog.Title className="text-lg font-semibold text-foreground">
+                                    {editingBudget
+                                      ? "Edit Budget"
+                                      : "Add Budget"}
+                                  </Dialog.Title>
+                                  <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+                                    {editingBudget
+                                      ? "Update the budget details"
+                                      : `Add a new budget for ${warehouse.name}`}
+                                  </Dialog.Description>
 
-                                    <div className="mt-6 space-y-4">
-                                      <div>
-                                        <label className="text-sm font-medium text-foreground">
-                                          Month
-                                        </label>
-                                        <select
-                                          value={budgetForm.month}
-                                          onChange={(e) =>
-                                            setBudgetForm({
-                                              ...budgetForm,
-                                              month: Number.parseInt(
-                                                e.target.value
-                                              ),
-                                            })
-                                          }
-                                          className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                        >
-                                          {Array.from(
-                                            { length: 12 },
-                                            (_, i) => i + 1
-                                          ).map((month) => (
-                                            <option key={month} value={month}>
-                                              {new Date(
-                                                2025,
-                                                month - 1
-                                              ).toLocaleDateString("en-US", {
-                                                month: "long",
-                                              })}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-
-                                      <div>
-                                        <label className="text-sm font-medium text-foreground">
-                                          Year
-                                        </label>
-                                        <select
-                                          value={budgetForm.year}
-                                          onChange={(e) =>
-                                            setBudgetForm({
-                                              ...budgetForm,
-                                              year: Number.parseInt(
-                                                e.target.value
-                                              ),
-                                            })
-                                          }
-                                          className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                        >
-                                          {Array.from(
-                                            { length: 5 },
-                                            (_, i) => 2025 - i
-                                          ).map((year) => (
-                                            <option key={year} value={year}>
-                                              {year}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-
-                                      <div>
-                                        <label className="text-sm font-medium text-foreground">
-                                          Amount (Rp)
-                                        </label>
-                                        <input
-                                          type="number"
-                                          value={budgetForm.amount}
-                                          onChange={(e) =>
-                                            setBudgetForm({
-                                              ...budgetForm,
-                                              amount: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Enter amount"
-                                          className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                        />
-                                      </div>
+                                  <div className="mt-6 space-y-4">
+                                    <div>
+                                      <label className="text-sm font-medium text-foreground">
+                                        Month
+                                      </label>
+                                      <select
+                                        value={budgetForm.month}
+                                        onChange={(e) =>
+                                          setBudgetForm({
+                                            ...budgetForm,
+                                            month: Number.parseInt(
+                                              e.target.value
+                                            ),
+                                          })
+                                        }
+                                        className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                      >
+                                        {Array.from(
+                                          { length: 12 },
+                                          (_, i) => i + 1
+                                        ).map((month) => (
+                                          <option key={month} value={month}>
+                                            {new Date(
+                                              budgetForm.year,
+                                              month - 1
+                                            ).toLocaleDateString("en-US", {
+                                              month: "long",
+                                            })}
+                                          </option>
+                                        ))}
+                                      </select>
                                     </div>
 
-                                    <div className="mt-6 flex gap-3">
-                                      <Dialog.Close asChild>
-                                        <Button
-                                          variant="outline"
-                                          className="flex-1 rounded-lg bg-transparent"
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </Dialog.Close>
-                                      <Button
-                                        onClick={handleAddBudget}
-                                        className="flex-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                                    <div>
+                                      <label className="text-sm font-medium text-foreground">
+                                        Year
+                                      </label>
+                                      <select
+                                        value={budgetForm.year}
+                                        onChange={(e) =>
+                                          setBudgetForm({
+                                            ...budgetForm,
+                                            year: Number.parseInt(
+                                              e.target.value
+                                            ),
+                                          })
+                                        }
+                                        className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                                       >
-                                        Add Budget
+                                        {Array.from(
+                                          { length: 10 },
+                                          (_, i) =>
+                                            new Date().getFullYear() + 2 - i
+                                        ).map((year) => (
+                                          <option key={year} value={year}>
+                                            {year}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    <div>
+                                      <label className="text-sm font-medium text-foreground">
+                                        Amount (Rp)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        value={budgetForm.amount}
+                                        onChange={(e) =>
+                                          setBudgetForm({
+                                            ...budgetForm,
+                                            amount: e.target.value,
+                                          })
+                                        }
+                                        placeholder="Enter amount"
+                                        className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-6 flex gap-3">
+                                    <Dialog.Close asChild>
+                                      <Button
+                                        variant="outline"
+                                        className="flex-1 rounded-lg bg-transparent"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </Dialog.Close>
+                                    <Button
+                                      onClick={handleAddBudget}
+                                      disabled={isSubmitting}
+                                      className="flex-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                    >
+                                      {isSubmitting
+                                        ? "Saving..."
+                                        : editingBudget
+                                        ? "Update"
+                                        : "Add Budget"}
+                                    </Button>
+                                  </div>
+                                </Dialog.Content>
+                              </Dialog.Portal>
+                            </Dialog.Root>
+                            <div className="space-y-2 mt-3">
+                              {loadingBudgets ? (
+                                <div className="text-center py-4 text-sm text-muted-foreground">
+                                  Loading budgets...
+                                </div>
+                              ) : budgets.length === 0 ? (
+                                <div className="text-center py-4 text-sm text-muted-foreground">
+                                  No budgets yet. Add one to get started.
+                                </div>
+                              ) : (
+                                budgets.map((budget) => (
+                                  <div
+                                    key={budget.id}
+                                    className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-sm hover:bg-muted/50"
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="text-muted-foreground">
+                                        {new Date(
+                                          budget.year,
+                                          budget.month - 1
+                                        ).toLocaleDateString("en-US", {
+                                          month: "long",
+                                          year: "numeric",
+                                        })}
+                                      </span>
+                                      <span className="font-medium text-foreground mt-1">
+                                        Rp{" "}
+                                        {budget.amount.toLocaleString("id-ID")}
+                                      </span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="1"
+                                        onClick={() => handleEditBudget(budget)}
+                                        className="gap-1 text-muted-foreground hover:text-foreground"
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="1"
+                                        onClick={() =>
+                                          handleDeleteBudget(budget.id)
+                                        }
+                                        className="gap-1 text-destructive hover:bg-destructive/10"
+                                        disabled={
+                                          deleteBudgetMutation.isPending
+                                        }
+                                      >
+                                        <Trash2 className="h-3 w-3" />
                                       </Button>
                                     </div>
-                                  </Dialog.Content>
-                                </Dialog.Portal>
-                              </Dialog.Root>
-                            </div>
-                            <div className="space-y-2">
-                              {mockBudgets[
-                                warehouse.id as keyof typeof mockBudgets
-                              ]?.map((budget, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-sm"
-                                >
-                                  <span className="text-muted-foreground">
-                                    {new Date(
-                                      budget.year,
-                                      budget.month - 1
-                                    ).toLocaleDateString("en-US", {
-                                      month: "long",
-                                      year: "numeric",
-                                    })}
-                                  </span>
-                                  <span className="font-medium text-foreground">
-                                    Rp {budget.amount.toLocaleString("id-ID")}
-                                  </span>
-                                </div>
-                              ))}
+                                  </div>
+                                ))
+                              )}
                             </div>
                           </div>
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog.Root
-        open={deleteId !== null}
-        onOpenChange={(open: boolean) => !open && setDeleteId(null)}
-      >
-        <AlertDialog.Content className="rounded-xl">
-          <AlertDialog.Title>Delete Warehouse</AlertDialog.Title>
-          <AlertDialog.Description>
-            Are you sure you want to delete this warehouse? This action cannot
-            be undone.
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4">
-            <AlertDialog.Cancel className="rounded-lg">
-              Cancel
-            </AlertDialog.Cancel>
-            <AlertDialog.Action
+        <dialog id="delete-warehouse-confirm" className="modal">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">Hapus Warehouse</h3>
+            <p className="py-4">
+              Apakah Anda yakin ingin menghapus warehouse ini? Tindakan ini
+              tidak dapat dibatalkan.
+            </p>
+            <div className="modal-action">
+              <form method="dialog" className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dialog = document.getElementById(
+                      "delete-warehouse-confirm"
+                    ) as HTMLDialogElement;
+                    dialog?.close();
+                    setDeleteId(null);
+                  }}
+                  className="btn btn-outline"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteWarehouseConfirm}
+                  disabled={deleteWarehouseMutation.isPending}
+                  className="btn btn-error text-white"
+                >
+                  {deleteWarehouseMutation.isPending ? "Menghapus..." : "Hapus"}
+                </button>
+              </form>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button
+              type="button"
               onClick={() => {
-                if (deleteId) onDelete(deleteId);
                 setDeleteId(null);
               }}
-              className="rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
-            </AlertDialog.Action>
-          </div>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
+              close
+            </button>
+          </form>
+        </dialog>
+      </Card>
     </>
   );
 }

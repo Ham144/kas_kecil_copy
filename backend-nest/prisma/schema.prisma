@@ -18,9 +18,6 @@ model User {
   warehouseId String?
   warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
   Globalsetting Globalsetting[]
-  two_faIsVerified Boolean  @default(false)
-  two_faSecret String? 
-  authMethod AuthMethod @default(LDAP)
 }
 
 enum AuthMethod {
@@ -30,6 +27,8 @@ enum AuthMethod {
 model Warehouse {
   id String @id @default(uuid())
   name        String @unique
+  location    String?
+  description String?
   budgets     Budget[]
   flowLogs FlowLog[]
   members User[]
@@ -53,14 +52,15 @@ model FlowLog {
   note String
   attachments String[]
   type FlowLogType
-  userId String
-  createdBy User @relation(fields: [userId], references: [username])
+  createdByUsername String
+  createdBy User @relation(fields: [createdByUsername], references: [username])
   warehouseId String
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
   categoryId String
   category FlowLogCategory @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now()) //no updateAt, bisa kacau
 }
+
 enum FlowLogType {
   IN
   OUT

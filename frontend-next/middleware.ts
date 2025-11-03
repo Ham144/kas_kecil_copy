@@ -18,9 +18,6 @@ export function middleware(req: NextRequest) {
     const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
     const description = decoded?.description;
 
-    console.log(decoded.username);
-    console.log(description);
-
     // === Role checking ===
     if (description === "IT") {
       return NextResponse.next();
@@ -45,7 +42,5 @@ export function middleware(req: NextRequest) {
   }
 }
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|login|unauthorized).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|unauthorized).*)"],
 };

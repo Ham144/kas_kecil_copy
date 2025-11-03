@@ -16,10 +16,12 @@ import * as Popover from "@radix-ui/react-popover";
 import { Button } from "@radix-ui/themes";
 import { useMutation } from "@tanstack/react-query";
 import { AuthApi } from "@/api/auth";
+import { useUserInfo } from "./UserContext";
 
 export function TopNavigation() {
   const pathname = usePathname();
   const [isUserPopoverOpen, setIsUserPopoverOpen] = useState(false);
+  const { userInfo, loadingUser } = useUserInfo();
 
   const { mutateAsync: handleLogout } = useMutation({
     mutationKey: ["logout"],
@@ -29,17 +31,15 @@ export function TopNavigation() {
     },
   });
 
-  const userInfo = {
-    username: "John Doe",
-    role: "Admin",
-    warehouse: "Warehouse A - Jakarta",
-  };
-
   const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/admin", label: "Administrator", icon: Crown },
     { href: "/setup", label: "Setup", icon: Settings },
   ];
+
+  if (loadingUser) {
+    return <span className="loading loading-spinner loading-lg"></span>;
+  }
 
   return (
     <nav className="border-b border-border bg-card shadow-sm sticky top-0 z-20">
@@ -92,11 +92,11 @@ export function TopNavigation() {
                   <div>
                     <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                       <User className="h-4 w-4" />
-                      {userInfo.username}
+                      {userInfo?.username}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Warehouse className="h-3 w-3" />
-                      {userInfo.warehouse}
+                      {userInfo?.warehouse || "No warehouse"}
                     </div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -117,19 +117,19 @@ export function TopNavigation() {
                     <div>
                       <p className="text-xs text-muted-foreground">Username</p>
                       <p className="text-sm font-medium text-foreground">
-                        {userInfo.username}
+                        {userInfo?.username}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Role</p>
                       <p className="text-sm font-medium text-foreground">
-                        {userInfo.role}
+                        {userInfo?.description}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Warehouse</p>
                       <p className="text-sm font-medium text-foreground">
-                        {userInfo.warehouse}
+                        {userInfo?.warehouse || "No warehouse"}
                       </p>
                     </div>
                   </div>

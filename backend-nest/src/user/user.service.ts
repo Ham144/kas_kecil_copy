@@ -189,6 +189,16 @@ export class UserService {
     const access_token = this.generateToken(payload, 'access');
     const refresh_token = this.generateToken(payload, 'refresh');
 
+    if (!access_token || !refresh_token) {
+      this.logger.error('Failed to generate tokens', {
+        access_token: !!access_token,
+        refresh_token: !!refresh_token,
+        hasJWTSecret: !!process.env.JWT_SECRET,
+        hasJWTSecretRefresh: !!process.env.JWT_SECRET_REFRESH,
+      });
+      throw new Error('Failed to generate authentication tokens');
+    }
+
     //simpan refresh_token ke redis
     await this.redis.set(
       payload.jti,
@@ -205,7 +215,6 @@ export class UserService {
       displayName: user.displayName,
       description: user.description,
       warehouse: user.warehouse,
-      two_faIsVerified: user.two_faIsVerified,
       refresh_token: refresh_token,
       access_token: access_token,
     };
@@ -221,8 +230,6 @@ export class UserService {
       );
 
       const isJtiFound = await this.redis.get(oldPayload.jti);
-
-      console.log('jti found? ', isJtiFound);
 
       if (!isJtiFound)
         throw new UnauthorizedException('Session anda telah dicabut (redis)');
@@ -259,9 +266,49 @@ export class UserService {
     }
   }
 
+  async getAllAccount(page: number, searchKey: string) {
+    const accounts: LoginResponseDto[] = await this.prismaService.user.findMany(
+      {
+        where: {
+          username: {
+            contains: searchKey,
+          },
+        },
+        include: {
+          warehouse: true,
+        },
+        skip: (page - 1) * 10,
+        take: 10,
+      },
+    );
+
+    return accounts;
+  }
+
+  async updateAccount(body: LoginResponseDto) {
+    return this.prismaService.user.update({
+      where: {
+        username: body.username,
+      },
+      data: {
+        displayName: body.displayName,
+        isActive: body.isActive,
+      },
+    });
+  }
+
+  async getUserInfo(req: any) {
+    //ubah payload sedikit agar bisa langsung dipakai
+    const myWarehouse = await this.prismaService.warehouse.findUnique({
+      where: { id: req.user.warehouseId },
+    });
+    req.user.warehouse = myWarehouse?.name || null;
+    delete req.user.jti;
+    return req.user;
+  }
+
   async logout(access_token: string, req: any) {
     if (!access_token) {
-      throw new UnauthorizedException('Error testing');
       console.log('delete refresh_token dan access_token');
     }
     const oldPayload: TokenPayload = await jwt.verify(
@@ -274,6 +321,7 @@ export class UserService {
       message: 'redis jti deleted',
     };
   }
+  // Reusable token generator
   // Reusable token generator
   private generateToken(
     payload: TokenPayload,

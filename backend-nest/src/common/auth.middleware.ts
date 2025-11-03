@@ -14,9 +14,9 @@ export class AuthMiddleware implements NestMiddleware {
     }
 
     const access_token = req?.cookies['access_token'];
+
     if (!access_token) {
-      console.log('authentication failed : ', req.originalUrl);
-      throw new HttpException('Route is forbidden', 403);
+      return res.status(403).json({ message: 'Route is forbidden' });
     }
 
     try {
@@ -27,8 +27,9 @@ export class AuthMiddleware implements NestMiddleware {
       req.user = decoded;
       next();
     } catch (error) {
-      console.log('authentication failed : ', req.originalUrl);
-      res.clearCookie('access_token');
+      console.log('authentication failed : ', req.originalUrl, error.message);
+      // Jangan clear cookie di sini, biarkan frontend yang handle refresh
+      // res.clearCookie('access_token', { path: '/' });
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
   }

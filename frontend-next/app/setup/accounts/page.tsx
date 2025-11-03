@@ -7,100 +7,38 @@ import { toast } from "sonner";
 import { Button, Card } from "@radix-ui/themes";
 import { TopNavigation } from "../../../components/top-navigation";
 import { useRouter } from "next/navigation";
-
-interface Account {
-  id: string;
-  username: string;
-  email: string;
-  role: "admin" | "user" | "viewer";
-  status: "active" | "inactive";
-}
-
-const DEFAULT_ACCOUNTS: Account[] = [
-  {
-    id: "1",
-    username: "John Doe",
-    email: "john@warehouse.com",
-    role: "admin",
-    status: "active",
-  },
-  {
-    id: "2",
-    username: "Jane Smith",
-    email: "jane@warehouse.com",
-    role: "user",
-    status: "active",
-  },
-];
+import { UserInfo } from "@/types/auth";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { AuthApi } from "@/api/auth";
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    role: "user" as const,
-  });
+  const [onEditingAccount, setOnEditingAccount] = useState<
+    UserInfo | undefined
+  >();
+  const [formData, setFormData] = useState<UserInfo>();
+  const [page, setPage] = useState(1);
+  const [searchKey, setSearcKey] = useState("");
+
   const router = useRouter();
 
-  const handleAddAccount = () => {
-    if (!formData.username.trim() || !formData.email.trim()) {
-      toast.error("Please fill in all fields");
-      return;
-    }
+  const { mutateAsync: handleEditAccount } = useMutation({
+    mutationKey: ["users", onEditingAccount],
+    mutationFn: async () => {
+      if (onEditingAccount) {
+        return await AuthApi.updateAccount(onEditingAccount);
+      }
+    },
+    onSuccess: () => {
+      toast.success("Account berhasil diupdate");
+      setIsDialogOpen(false);
+    },
+  });
 
-    if (editingId) {
-      setAccounts(
-        accounts.map((acc) =>
-          acc.id === editingId
-            ? {
-                ...acc,
-                username: formData.username,
-                email: formData.email,
-                role: formData.role,
-              }
-            : acc
-        )
-      );
-      toast.success("Account updated successfully");
-    } else {
-      const newAccount: Account = {
-        id: crypto.randomUUID(),
-        username: formData.username,
-        email: formData.email,
-        role: formData.role,
-        status: "active",
-      };
-      setAccounts([...accounts, newAccount]);
-      toast.success("Account created successfully");
-    }
-
-    setFormData({ username: "", email: "", role: "user" });
-    setEditingId(null);
-    setIsDialogOpen(false);
-  };
-
-  const handleEditAccount = (account: Account) => {
-    setFormData({
-      username: account.username,
-      email: account.email,
-      role: account.role,
-    });
-    setEditingId(account.id);
-    setIsDialogOpen(true);
-  };
-
-  const handleDeleteAccount = (id: string) => {
-    setAccounts(accounts.filter((acc) => acc.id !== id));
-    toast.success("Account deleted successfully");
-  };
-
-  const handleOpenDialog = () => {
-    setFormData({ username: "", email: "", role: "user" });
-    setEditingId(null);
-    setIsDialogOpen(true);
-  };
+  const { data: accounts = [] } = useQuery<UserInfo[]>({
+    queryKey: ["users"],
+    queryFn: async () => await AuthApi.getAllAccount(page, searchKey),
+  });
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -139,13 +77,6 @@ export default function AccountsPage() {
               Manage accounts and permissions
             </p>
           </div>
-          <Button
-            onClick={handleOpenDialog}
-            className="gap-2 rounded-lg bg-primary px-4 flex items-center  py-2 text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Add Account
-          </Button>
         </div>
 
         {/* Accounts Table */}
@@ -156,6 +87,9 @@ export default function AccountsPage() {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                     Username
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
+                    displayName
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                     Description
@@ -171,46 +105,40 @@ export default function AccountsPage() {
               <tbody>
                 {accounts.map((account) => (
                   <tr
-                    key={account.id}
+                    key={account.username}
                     className="border-b border-border hover:bg-muted/50"
                   >
                     <td className="px-6 py-4 text-sm text-foreground">
                       {account.username}
                     </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${getRoleColor(account.role)}`}
-                      >
-                        <Shield className="h-3 w-3" />
-                        {account.role.charAt(0).toUpperCase() +
-                          account.role.slice(1)}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-foreground">
+                      {account.displayName}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${account.status === "active" ? "bg-green-500/10 text-green-600" : "bg-gray-500/10 text-gray-600"}`}
+                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${getRoleColor(
+                          account.description
+                        )}`}
                       >
-                        {account.status.charAt(0).toUpperCase() +
-                          account.status.slice(1)}
+                        <Shield className="h-3 w-3" />
+                        {account.description.charAt(0).toUpperCase() +
+                          account.description.slice(1)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span>{account.isActive ? "Active" : "Inactive"}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <Button
+                          onClick={() => {
+                            setOnEditingAccount(account);
+                            setIsDialogOpen(true);
+                          }}
                           variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditAccount(account)}
                           className="gap-2 text-muted-foreground hover:text-foreground"
                         >
                           <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteAccount(account.id)}
-                          className="gap-2 text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
@@ -228,54 +156,46 @@ export default function AccountsPage() {
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-lg">
             <Dialog.Title className="text-lg font-semibold text-foreground">
-              {editingId ? "Edit Account" : "Add New Account"}
+              {onEditingAccount ? "Edit Account" : "Add New Account"}
             </Dialog.Title>
-            <Dialog.Description className="mt-2 text-sm text-muted-foreground">
-              {editingId
-                ? "Update account details"
-                : "Create a new user account"}
-            </Dialog.Description>
 
             <div className="mt-6 space-y-4">
+              <span>Display Name</span>
               <input
                 type="text"
-                value={formData.username}
-                onChange={(e) =>
-                  setFormData({ ...formData, username: e.target.value })
-                }
-                placeholder="Username"
+                value={onEditingAccount?.displayName || ""}
+                onChange={(e) => {
+                  setOnEditingAccount((prev) =>
+                    prev ? { ...prev, displayName: e.target.value } : undefined
+                  );
+                }}
+                placeholder="display name"
                 className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="Email"
-                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <select
-                value={formData.role}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    role: e.target.value as "admin" | "user" | "viewer",
-                  })
-                }
-                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="viewer">Viewer</option>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
+              <div className="form-control">
+                <label className="flex items-center gap-2">
+                  <span className="label-text">User Aktif</span>
+                  <input
+                    type="checkbox"
+                    checked={onEditingAccount?.isActive || false}
+                    className="checkbox"
+                    onChange={(e) => {
+                      setOnEditingAccount((prev) =>
+                        prev
+                          ? { ...prev, isActive: e.target.checked }
+                          : undefined
+                      );
+                    }}
+                  />
+                </label>
+              </div>
 
               <div className="flex gap-3 pt-4">
                 <Button
-                  onClick={handleAddAccount}
+                  onClick={() => handleEditAccount()}
                   className="flex-1 rounded-lg bg-primary py-2 text-primary-foreground hover:bg-primary/90"
                 >
-                  {editingId ? "Update" : "Create"}
+                  {onEditingAccount ? "Update" : "Create"}
                 </Button>
                 <Button
                   onClick={() => setIsDialogOpen(false)}

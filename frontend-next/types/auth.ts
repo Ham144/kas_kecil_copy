@@ -11,9 +11,11 @@ export interface LoginResponseDto {
 
 export interface UserInfo {
   id: string;
+  description: string;
   username: string;
-  email?: string;
-  role?: string;
+  displayName?: string;
+  warehouse: string;
+  isActive?: boolean;
   // Tambahkan field lain sesuai kebutuhan
 }
 

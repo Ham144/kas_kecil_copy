@@ -5,24 +5,32 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { Lock, User } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import { AuthApi } from "@/api/auth";
+import { useUserInfo } from "./UserContext";
 
 export function LoginForm() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "yafizham",
     password: "Catur2025!",
   });
-  
+  const { userInfo } = useUserInfo();
+
+  if (userInfo) {
+    redirect("/");
+  }
+
   const { mutateAsync: handleLogin, isPending: isLoading } = useMutation({
-    mutationKey: ['login'],
+    mutationKey: ["login"],
     mutationFn: AuthApi.loginUserLdap,
     onSuccess: (data) => {
-      router.push("/");
+      window.location.reload();
     },
     onError: (err: any) => {
-      const errorMessage = err.response?.data?.message || err.message || "Gagal login. Periksa kembali username dan password Anda.";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Gagal login. Periksa kembali username dan password Anda.";
       toast.error(errorMessage);
     },
   });
