@@ -6,6 +6,7 @@ import { RedisModule } from './redis/redis.module';
 import { FlowLogCategoryModule } from './flow-log-category/flow-log-category.module';
 import { BudgetModule } from './budget/budget.module';
 import { FlowLogModule } from './flow-log/flow-log.module';
+import { HttpExceptionFilter } from './common/http-exception-filter';
 
 @Module({
   imports: [
@@ -18,6 +19,6 @@ import { FlowLogModule } from './flow-log/flow-log.module';
     FlowLogModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [HttpExceptionFilter],
 })
 export class AppModule {}

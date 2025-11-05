@@ -1,4 +1,5 @@
 import { Calendar, Tag, DollarSign } from "lucide-react";
+import { FlowLog, FlowLogType } from "@/types/flowLog";
 
 export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
   const formatCurrency = (amount: number) => {
@@ -9,8 +10,11 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("id-ID", {
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return "N/A";
+    const date =
+      typeof dateString === "string" ? new Date(dateString) : dateString;
+    return date.toLocaleDateString("id-ID", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -41,13 +45,18 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-medium text-foreground">
-                      {expense.category}
-                    </p>
+                    <p className="font-medium text-foreground"></p>
                   </div>
+                  {expense.category && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {typeof expense.category === "object"
+                        ? expense.category.name
+                        : expense.category}
+                    </p>
+                  )}
                   <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    {formatDate(expense.date)}
+                    {formatDate(expense.createdAt)}
                   </div>
                   {expense.note && (
                     <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
@@ -57,7 +66,6 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1 font-semibold text-primary">
-                    <DollarSign className="h-4 w-4" />
                     <span className="text-sm">
                       {formatCurrency(expense.amount)}
                     </span>

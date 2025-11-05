@@ -3,7 +3,13 @@
 import { useState, useMemo } from "react";
 
 import { Card } from "@radix-ui/themes";
-import { Filter, TrendingUp } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  FileWarningIcon,
+  Filter,
+  TrendingUp,
+} from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -20,129 +26,36 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TopNavigation } from "../../../components/top-navigation";
+import { useQuery } from "@tanstack/react-query";
+import { FlowLogApi } from "@/api/flowLog.api";
+import { GetAnalyticFilter } from "@/types/flowLog";
 
 export default function StatsPage() {
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().slice(0, 7)
   );
   const [selectedWarehouse, setSelectedWarehouse] = useState("warehouse-1");
+  const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [filter, setFilter] = useState<GetAnalyticFilter>({
+    selectedDate: new Date().toISOString().split("T")[0],
+    selectedWarehouseId: "all",
+  });
 
-  // Mock data
-  const warehouses = [
-    { id: "warehouse-1", name: "Warehouse A - Jakarta" },
-    { id: "warehouse-2", name: "Warehouse B - Surabaya" },
-  ];
-
-  const allExpenses = [
-    {
-      id: "1",
-      title: "Fuel",
-      category: "Fuel",
-      amount: 250000,
-      date: "2025-10-20",
-      warehouse: "warehouse-1",
+  const { data: analytic } = useQuery({
+    queryKey: ["flow-logs"],
+    queryFn: async () => {
+      try {
+        const res = await FlowLogApi.getAnalytic(filter);
+        return res;
+      } catch (error) {
+        setIsErrorAnalytic(true);
+        console.log(error);
+        setErrors((prevErrors) => [...prevErrors, error.response.data.message]);
+        return null;
+      }
     },
-    {
-      id: "2",
-      title: "Maintenance",
-      category: "Maintenance",
-      amount: 500000,
-      date: "2025-10-19",
-      warehouse: "warehouse-1",
-    },
-    {
-      id: "3",
-      title: "Office Supplies",
-      category: "Office Supplies",
-      amount: 150000,
-      date: "2025-10-18",
-      warehouse: "warehouse-2",
-    },
-    {
-      id: "4",
-      title: "Utilities",
-      category: "Utilities",
-      amount: 300000,
-      date: "2025-10-15",
-      warehouse: "warehouse-1",
-    },
-    {
-      id: "5",
-      title: "Equipment",
-      category: "Equipment",
-      amount: 1000000,
-      date: "2025-10-10",
-      warehouse: "warehouse-1",
-    },
-  ];
-
-  // Filter expenses
-  const filteredExpenses = useMemo(() => {
-    return allExpenses.filter((expense) => {
-      const expenseMonth = expense.date.slice(0, 7);
-      const matchesMonth = expenseMonth === selectedMonth;
-      const matchesWarehouse =
-        selectedWarehouse === "all" || expense.warehouse === selectedWarehouse;
-      return matchesMonth && matchesWarehouse;
-    });
-  }, [selectedMonth, selectedWarehouse]);
-
-  // Pie Chart Data - By Category
-  const pieData = useMemo(() => {
-    const categoryMap: { [key: string]: number } = {};
-    filteredExpenses.forEach((expense) => {
-      categoryMap[expense.category] =
-        (categoryMap[expense.category] || 0) + expense.amount;
-    });
-    return Object.entries(categoryMap).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  }, [filteredExpenses]);
-
-  // Bar Chart Data - By Category
-  const barData = useMemo(() => {
-    const categoryMap: { [key: string]: number } = {};
-    filteredExpenses.forEach((expense) => {
-      categoryMap[expense.category] =
-        (categoryMap[expense.category] || 0) + expense.amount;
-    });
-    return Object.entries(categoryMap).map(([name, amount]) => ({
-      name,
-      amount,
-    }));
-  }, [filteredExpenses]);
-
-  // Line Chart Data - By Date
-  const lineData = useMemo(() => {
-    const dateMap: { [key: string]: number } = {};
-    filteredExpenses.forEach((expense) => {
-      const date = expense.date;
-      dateMap[date] = (dateMap[date] || 0) + expense.amount;
-    });
-    return Object.entries(dateMap)
-      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .map(([date, amount]) => ({
-        date: new Date(date).toLocaleDateString("id-ID", {
-          month: "short",
-          day: "numeric",
-        }),
-        amount,
-      }));
-  }, [filteredExpenses]);
-
-  // Rank Chart Data - Top Categories
-  const rankData = useMemo(() => {
-    const categoryMap: { [key: string]: number } = {};
-    filteredExpenses.forEach((expense) => {
-      categoryMap[expense.category] =
-        (categoryMap[expense.category] || 0) + expense.amount;
-    });
-    return Object.entries(categoryMap)
-      .map(([name, amount]) => ({ name, amount }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
-  }, [filteredExpenses]);
+  });
 
   const COLORS = [
     "hsl(var(--chart-1))",
@@ -161,17 +74,21 @@ export default function StatsPage() {
     }).format(value);
   };
 
-  const totalSpent = useMemo(() => {
-    return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  }, [filteredExpenses]);
-
-  const topCategory = useMemo(() => {
-    if (rankData.length === 0) return null;
-    return rankData[0];
-  }, [rankData]);
-
-  const budgetLimit = 5000000; // Mock budget limit
-  const budgetRemaining = Math.max(0, budgetLimit - totalSpent);
+  if (isErrorAnalytic) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopNavigation />
+        <div role="alert" className="alert alert-error">
+          <FileWarningIcon />
+          <div className="flex flex-col gap-3">
+            {errors.map((error, index) => (
+              <span key={index}>{error}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -187,8 +104,12 @@ export default function StatsPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       Total Spent This Month
                     </p>
+                    <p className="font-medium text-muted-foreground text-xs">
+                      "total out-flow" - "total in-flow"
+                    </p>
+
                     <p className="mt-2 text-2xl font-bold text-foreground">
-                      {formatCurrency(totalSpent)}
+                      {formatCurrency(analytic?.budgetSpent || 0)}
                     </p>
                   </div>
                   <div className="rounded-lg bg-primary/10 p-3">
@@ -197,7 +118,6 @@ export default function StatsPage() {
                 </div>
               </div>
             </Card>
-
             {/* Budget Remaining Widget */}
             <Card className="shadow-lg border border-border">
               <div className="p-6">
@@ -206,26 +126,36 @@ export default function StatsPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       Budget Remaining
                     </p>
+                    <p className="font-medium text-muted-foreground text-xs">
+                      "current month budget" - "budget spent"
+                    </p>
                     <p className="mt-2 text-2xl font-bold text-foreground">
-                      {formatCurrency(budgetRemaining)}
+                      {formatCurrency(analytic?.budgetRemaining || 0)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      of {formatCurrency(budgetLimit)}
+                      of {formatCurrency(analytic?.currentMonthBudget || 0)}
                     </p>
                   </div>
                   <div
-                    className={`rounded-lg p-3 ${budgetRemaining > 0 ? "bg-green-100" : "bg-red-100"}`}
+                    className={`rounded-lg p-3 ${
+                      analytic && analytic.budgetRemaining > 0
+                        ? "bg-green-100"
+                        : "bg-red-100"
+                    }`}
                   >
                     <div
-                      className={`h-6 w-6 ${budgetRemaining > 0 ? "text-green-600" : "text-red-600"}`}
+                      className={`h-6 w-6 ${
+                        analytic && analytic?.budgetRemaining > 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
                     >
-                      {budgetRemaining > 0 ? "✓" : "✕"}
+                      {analytic && analytic?.budgetRemaining > 0 ? "✓" : "✕"}
                     </div>
                   </div>
                 </div>
               </div>
             </Card>
-
             {/* Top Category Widget */}
             <Card className="shadow-lg border border-border">
               <div className="p-6">
@@ -235,16 +165,47 @@ export default function StatsPage() {
                       Top Expense Category
                     </p>
                     <p className="mt-2 text-2xl font-bold text-foreground">
-                      {topCategory?.name || "N/A"}
+                      {analytic?.topCategories?.[0]?.name || "-"}
                     </p>
-                    {topCategory && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatCurrency(topCategory.amount)}
-                      </p>
-                    )}
                   </div>
                   <div className="rounded-lg bg-blue-100 p-3">
                     <div className="h-6 w-6 text-blue-600">📊</div>
+                  </div>
+                </div>
+              </div>
+            </Card>{" "}
+            {/* total inFlow Widget */}
+            <Card className="shadow-lg border border-border">
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Total in-flow This Month
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">
+                      {formatCurrency(analytic?.totalInflow || 0)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-green-100 p-3">
+                    <ArrowDownLeft />
+                  </div>
+                </div>
+              </div>
+            </Card>
+            {/* total outflow Widget */}
+            <Card className="shadow-lg border border-border">
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Total out-flow This Month
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">
+                      {formatCurrency(analytic?.totalOutflow || 0)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-red-100 p-3">
+                    <ArrowUpRight />
                   </div>
                 </div>
               </div>
@@ -271,8 +232,13 @@ export default function StatsPage() {
                   </label>
                   <input
                     type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    value={filter.selectedDate}
+                    onChange={(e) =>
+                      setFilter((prev) => ({
+                        ...prev,
+                        selectedDate: e.target.value,
+                      }))
+                    }
                     className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
@@ -284,15 +250,21 @@ export default function StatsPage() {
                   </label>
                   <select
                     value={selectedWarehouse}
-                    onChange={(e) => setSelectedWarehouse(e.target.value)}
+                    onChange={(e) =>
+                      setFilter((prev) => ({
+                        ...prev,
+                        selectedWarehouseId: e.target.value,
+                      }))
+                    }
                     className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="all">All Warehouses</option>
-                    {warehouses.map((warehouse) => (
-                      <option key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </option>
-                    ))}
+                    {analytic?.topWarehouses &&
+                      analytic?.topWarehouses.map((warehouse: any) => (
+                        <option key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -309,11 +281,12 @@ export default function StatsPage() {
                 </h3>
               </div>
               <div className="p-6">
-                {pieData.length > 0 ? (
+                {analytic?.topCategories &&
+                analytic?.topCategories.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={pieData}
+                        data={analytic?.topCategories}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -324,12 +297,14 @@ export default function StatsPage() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {pieData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
+                        {analytic?.topCategories.map(
+                          (entry: any, index: number) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          )
+                        )}
                       </Pie>
                       <Tooltip
                         formatter={(value) => formatCurrency(value as number)}
@@ -343,7 +318,6 @@ export default function StatsPage() {
                 )}
               </div>
             </Card>
-
             {/* Bar Chart */}
             <Card className="shadow-lg">
               <div className="border-b border-border bg-card p-6">
@@ -352,9 +326,10 @@ export default function StatsPage() {
                 </h3>
               </div>
               <div className="p-6">
-                {barData.length > 0 ? (
+                {analytic?.topCategories &&
+                analytic?.topCategories.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={barData}>
+                    <BarChart data={analytic?.topCategories}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -371,18 +346,17 @@ export default function StatsPage() {
                 )}
               </div>
             </Card>
-
             {/* Line Chart */}
             <Card className="shadow-lg md:col-span-2">
               <div className="border-b border-border bg-card p-6">
                 <h3 className="text-lg font-semibold text-foreground">
-                  Expenses Over Time
+                  Flow Over Time
                 </h3>
               </div>
               <div className="p-6">
-                {lineData.length > 0 ? (
+                {analytic?.flowOverTime && analytic?.flowOverTime.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={lineData}>
+                    <LineChart data={analytic.flowOverTime}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -392,9 +366,15 @@ export default function StatsPage() {
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="amount"
+                        dataKey="IN"
                         stroke="hsl(var(--chart-2))"
-                        name="Amount"
+                        name="Pemasukan"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="OUT"
+                        stroke="hsl(var(--chart-3))"
+                        name="Pengeluaran"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -405,19 +385,19 @@ export default function StatsPage() {
                 )}
               </div>
             </Card>
-
-            {/* Rank Chart */}
+            {/* Rank category Chart */}
             <Card className="shadow-lg md:col-span-2">
               <div className="border-b border-border bg-card p-6">
                 <h3 className="text-lg font-semibold text-foreground">
-                  Top 5 Categories
+                  Top 5 Categories expenses
                 </h3>
               </div>
               <div className="p-6">
-                {rankData.length > 0 ? (
+                {analytic?.topCategories &&
+                analytic?.topCategories.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart
-                      data={rankData}
+                      data={analytic?.topCategories}
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
                     >
@@ -428,6 +408,38 @@ export default function StatsPage() {
                         formatter={(value) => formatCurrency(value as number)}
                       />
                       <Bar dataKey="amount" fill="hsl(var(--chart-3))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                    No data available
+                  </div>
+                )}
+              </div>
+            </Card>{" "}
+            {/* Rank category Chart */}
+            <Card className="shadow-lg md:col-span-2">
+              <div className="border-b border-border bg-card p-6">
+                <h3 className="text-lg font-semibold text-foreground">
+                  Top 5 warehouses expenses
+                </h3>
+              </div>
+              <div className="p-6">
+                {analytic?.topWarehouses &&
+                analytic?.topWarehouses.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={analytic?.topWarehouses}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={190} />
+                      <Tooltip
+                        formatter={(value) => formatCurrency(value as number)}
+                      />
+                      <Bar dataKey="total" fill="hsl(var(--chart-3))" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (

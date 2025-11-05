@@ -15,6 +15,7 @@ export interface UserInfo {
   username: string;
   displayName?: string;
   warehouse: string;
+  warehouseId?: string;
   isActive?: boolean;
   // Tambahkan field lain sesuai kebutuhan
 }

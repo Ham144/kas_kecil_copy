@@ -51,7 +51,7 @@ model FlowLog {
   amount Float
   note String
   attachments String[]
-  type FlowLogType
+  type FlowLogType 
   createdByUsername String
   createdBy User @relation(fields: [createdByUsername], references: [username])
   warehouseId String

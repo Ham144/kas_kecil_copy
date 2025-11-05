@@ -7,6 +7,9 @@ import { PrismaService } from './prisma.service';
 import { APP_FILTER } from '@nestjs/core';
 import { ErrorFilter } from './error.filter';
 import { AuthMiddleware } from './auth.middleware';
+// import { R2Service } from './r2.service';
+import { UploadImageLocalService } from './uploadImageLocal.service';
+import { HttpExceptionFilter } from './http-exception-filter';
 
 @Global()
 @Module({
@@ -22,12 +25,21 @@ import { AuthMiddleware } from './auth.middleware';
   providers: [
     PrismaService,
     ValidationService,
+    // R2Service,
     {
       provide: APP_FILTER,
       useClass: ErrorFilter,
     },
+    UploadImageLocalService,
+    HttpExceptionFilter,
   ],
-  exports: [PrismaService, ValidationService],
+  exports: [
+    PrismaService,
+    ValidationService,
+    // R2Service,
+    UploadImageLocalService,
+    HttpExceptionFilter,
+  ],
 })
 export class CommonModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

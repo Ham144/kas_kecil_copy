@@ -10,5 +10,5 @@ setup biaya apa saja: parkir, BBM
 [x] budgets
 [x] Flow Log category
 [x] global setting
-[] expense
-[] revenue
+[x] register expense
+[x] register revenue

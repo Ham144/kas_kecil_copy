@@ -43,7 +43,7 @@ describe('user spec test', () => {
 
     it('should create new expense', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/flowLog/create')
+        .post('/api/flow-log')
         .send({
           title: 'expenxe-' + randomString,
           amount: numberRand,

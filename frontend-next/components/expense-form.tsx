@@ -1,51 +1,54 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card } from "@radix-ui/themes";
+import { CreateFlowLogDto, FlowLog, FlowLogType } from "@/types/flowLog";
+import { useUserInfo } from "./UserContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FlowLogApi } from "@/api/flowLog.api";
+import axiosInstance from "@/lib/axios";
+import { FlowCategoryResponse } from "@/types/flowcategory.type";
+import { useRouter } from "next/navigation";
 
-const EXPENSE_CATEGORIES = [
-  "Fuel",
-  "Maintenance",
-  "Office Supplies",
-  "Utilities",
-  "Transportation",
-  "Equipment",
-  "Other",
-];
-
-// Simple UUID generator function
-const generateUUID = () => {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c == "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
-export function ExpenseForm({
-  onSubmit,
-}: {
-  onSubmit: (expense: any) => void;
-}) {
-  const [formData, setFormData] = useState({
-    title: "", // Changed from 'category' to 'title' to match Expense model
-    category: "", // Added category field for ExpenseCategory relation
-    warehouseId: "warehouse-1", // Added warehouseId field
-    amount: "",
+export function ExpenseForm({}: {}) {
+  const { userInfo } = useUserInfo();
+  const [formData, setFormData] = useState<CreateFlowLogDto>({
+    title: "",
+    category: "",
+    warehouse: (userInfo as any)?.warehouseId || "",
+    amount: 0,
     note: "",
-    date: new Date().toISOString().split("T")[0],
+    attachments: [],
+    type: FlowLogType.OUT,
   });
-  const [attachments, setAttachments] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const userInfo = {
-    username: "John Doe",
-    warehouse: "Warehouse A - Jakarta",
-  };
+  // Fetch categories from backend
+  const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
+    queryKey: ["flow-log-category"],
+    queryFn: async () => {
+      const res = await axiosInstance.get<FlowCategoryResponse[]>(
+        "/flow-log-category"
+      );
+      return res.data;
+    },
+  });
+
+  // Update warehouse when userInfo changes
+  useEffect(() => {
+    if (userInfo && (userInfo as any)?.warehouseId) {
+      setFormData((prev) => ({
+        ...prev,
+        warehouse: (userInfo as any)?.warehouseId,
+      }));
+    }
+  }, [userInfo]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -53,73 +56,168 @@ export function ExpenseForm({
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === "amount"
+          ? value === ""
+            ? 0
+            : Number.parseFloat(value)
+          : value,
+    }));
   };
+
+  // Create expense mutation with proper error handling
+  const { mutateAsync: createExpense, isPending: isCreatingExpense } =
+    useMutation({
+      mutationKey: ["createExpense"],
+      mutationFn: async (data: CreateFlowLogDto & { files?: File[] }) => {
+        // Validate required fields
+        if (!data.title || !data.amount || !data.warehouse || !data.category) {
+          throw new Error(
+            "Missing required fields: title, amount, warehouse, and category are required"
+          );
+        }
+
+        // Upload files first if any
+        let filePaths: string[] = [];
+        if (data.files && data.files.length > 0) {
+          const uploadResponse = await FlowLogApi.uploadFiles(data.files);
+          if (!uploadResponse.success) {
+            throw new Error(uploadResponse.message || "Failed to upload files");
+          }
+          filePaths = uploadResponse.data || [];
+        }
+
+        // Create expense with file paths
+        const expenseData: CreateFlowLogDto = {
+          ...data,
+          attachments: filePaths,
+        };
+
+        const response = await FlowLogApi.registerExpense(expenseData);
+
+        if (!response.success) {
+          throw new Error(response.message || "Failed to create expense");
+        }
+
+        return response.data as FlowLog;
+      },
+      onSuccess: (data) => {
+        // Invalidate and refetch queries
+        queryClient.invalidateQueries({ queryKey: ["recentOutflows"] });
+        queryClient.invalidateQueries({ queryKey: ["flowLogs"] });
+
+        toast.success("Expense created successfully", {
+          description: `${data.title} - Rp ${data.amount.toLocaleString(
+            "id-ID"
+          )}`,
+        });
+
+        // Reset form
+        setFormData({
+          title: "",
+          category: "",
+          warehouse: (userInfo as any)?.warehouseId || "",
+          amount: 0,
+          note: "",
+          attachments: [],
+          type: FlowLogType.OUT,
+        });
+        setPreviews([]);
+        setUploadedFiles([]);
+      },
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to create expense");
+      },
+    });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const newFiles = [...attachments, ...files].slice(0, 5);
-    setAttachments(newFiles);
+    if (files.length === 0) return;
 
-    // Generate previews
-    const newPreviews: string[] = [];
-    newFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        newPreviews.push(reader.result as string);
-        if (newPreviews.length === newFiles.length) {
-          setPreviews(newPreviews);
-        }
-      };
-      reader.readAsDataURL(file);
+    const maxFiles = 5;
+    const maxFileSizeMB = 5; // 5MB per file (matching backend limit)
+
+    // Validate file sizes
+    const invalidFiles = files.filter((file) => {
+      const sizeMB = file.size / (1024 * 1024);
+      return sizeMB > maxFileSizeMB;
     });
-  };
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
-    setPreviews((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.title || !formData.category || !formData.amount) {
-      toast("Please fill in all required fields");
+    if (invalidFiles.length > 0) {
+      toast.error(
+        `Some files are too large. Maximum size: ${maxFileSizeMB}MB per file`
+      );
       return;
     }
 
-    setIsSubmitting(true);
+    const filesToAdd = files.slice(0, maxFiles - uploadedFiles.length);
 
-    // Simulate API call
-    setTimeout(() => {
-      const newExpense = {
-        id: generateUUID(),
-        title: formData.title,
-        category: formData.category,
-        warehouseId: formData.warehouseId,
-        amount: Number.parseFloat(formData.amount),
-        date: formData.date,
-        note: formData.note,
-        attachments: previews,
-      };
+    if (filesToAdd.length === 0) {
+      toast.error(`Maximum ${maxFiles} files allowed`);
+      return;
+    }
 
-      onSubmit(newExpense);
+    // Add files to state
+    const newFiles = [...uploadedFiles, ...filesToAdd].slice(0, maxFiles);
+    setUploadedFiles(newFiles);
 
-      toast("Expense submitted successfully");
-
-      // Reset form
-      setFormData({
-        title: "",
-        category: "",
-        warehouseId: "warehouse-1",
-        amount: "",
-        note: "",
-        date: new Date().toISOString().split("T")[0],
+    // Generate previews for display
+    const previewPromises = filesToAdd.map((file) => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      setAttachments([]);
-      setPreviews([]);
-      setIsSubmitting(false);
-    }, 1000);
+    });
+
+    Promise.all(previewPromises)
+      .then((newPreviews) => {
+        setPreviews([...previews, ...newPreviews].slice(0, maxFiles));
+        toast.success(`Added ${filesToAdd.length} file(s)`);
+      })
+      .catch(() => {
+        toast.error("Failed to generate previews");
+      });
+  };
+  const removeAttachment = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate required fields
+    if (
+      !formData.title ||
+      !formData.amount ||
+      !formData.warehouse ||
+      !formData.category
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (formData.amount <= 0) {
+      toast.error("Amount must be greater than 0");
+      return;
+    }
+
+    try {
+      await createExpense({
+        ...formData,
+        note: formData.note || "",
+        attachments: [], // Will be set after file upload
+        files: uploadedFiles, // Pass files for upload
+      });
+    } catch (error) {
+      // Error is already handled in mutation onError
+    }
   };
 
   return (
@@ -131,7 +229,7 @@ export function ExpenseForm({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 p-6">
+      <form onSubmit={handleFormSubmit} className="space-y-6 p-6">
         <div>
           <label className="block text-sm font-medium text-foreground">
             Expense Title <span className="text-destructive">*</span>
@@ -147,9 +245,19 @@ export function ExpenseForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground">
-            Category <span className="text-destructive">*</span>
+          <label className=" text-sm font-medium text-foreground flex justify-between">
+            <div className="flex">
+              <span>Category</span>
+              <span className="text-destructive">*</span>
+            </div>
+            <button
+              onClick={() => router.push("/setup/category")}
+              className="link font-light text-xs"
+            >
+              new category
+            </button>
           </label>
+
           <select
             name="category"
             value={formData.category}
@@ -157,9 +265,9 @@ export function ExpenseForm({
             className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="">Select a category</option>
-            {EXPENSE_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </select>
@@ -172,7 +280,7 @@ export function ExpenseForm({
           </label>
           <input
             type="text"
-            value={userInfo.username}
+            value={userInfo?.username}
             disabled
             className="mt-2 w-full rounded-xl border border-input bg-muted px-4 py-2.5 text-foreground opacity-60"
           />
@@ -198,20 +306,6 @@ export function ExpenseForm({
           </div>
         </div>
 
-        {/* Date */}
-        <div>
-          <label className="block text-sm font-medium text-foreground">
-            Date
-          </label>
-          <input
-            type="date"
-            name="date"
-            value={formData.date}
-            onChange={handleInputChange}
-            className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
         {/* Warehouse (Disabled) */}
         <div>
           <label className="block text-sm font-medium text-foreground">
@@ -219,7 +313,7 @@ export function ExpenseForm({
           </label>
           <input
             type="text"
-            value={userInfo.warehouse}
+            value={userInfo?.warehouse}
             disabled
             className="mt-2 w-full rounded-xl border border-input bg-muted px-4 py-2.5 text-foreground opacity-60"
           />
@@ -246,7 +340,8 @@ export function ExpenseForm({
             Attachments
           </label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Upload up to 5 images (receipts, invoices, etc.)
+            Upload up to 5 images (max 5MB per file). Files will be stored on
+            the server.
           </p>
 
           {/* Upload Area */}
@@ -301,10 +396,10 @@ export function ExpenseForm({
         <div className="flex gap-3 pt-4">
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isCreatingExpense}
             className="flex-1 gap-2 rounded-xl bg-primary py-2.5 text-primary-foreground hover:bg-primary/90"
           >
-            {isSubmitting ? "Submitting..." : "Submit"}
+            {isCreatingExpense ? "Submitting..." : "Submit"}
           </Button>
           <Button
             type="button"

@@ -18,6 +18,6 @@ export interface Warehouse {
   name: string;
   location?: string | null;
   description?: string | null;
-  members: string[];
-  budgetsCount: number;
+  members?: string[];
+  budgetsCount?: number;
 }

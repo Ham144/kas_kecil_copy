@@ -1,3 +1,6 @@
+import { flowCategoryResponseDto } from './flow-category.model';
+import { WarehouseResponseDto } from './warehouse.model';
+
 export class FlowlogResponseDto {
   id: string;
   title: string;
@@ -21,7 +24,23 @@ export class FlowLogCreateDto {
   category: string;
 }
 
-enum FlowLogType {
+export enum FlowLogType {
   IN,
   OUT,
+}
+
+export class AnalyticResponseDto {
+  totalInflow: number;
+  totalOutflow: number;
+  budgetRemaining: number;
+  budgetSpent: number;
+  topCategories: object[];
+  topWarehouses: object[];
+  currentMonthBudget: number;
+  flowOverTime: object[];
+}
+
+export class GetAnalyticFilter {
+  selectedDate: Date;
+  selectedWarehouseId: string;
 }

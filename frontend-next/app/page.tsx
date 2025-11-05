@@ -1,78 +1,219 @@
 "use client";
 
-import { ArrowRight, PlusIcon, MinusCircle } from "lucide-react";
+import {
+  ArrowRight,
+  PlusIcon,
+  MinusCircle,
+  FileText,
+  Download,
+  Settings,
+  HelpCircle,
+  Warehouse,
+  ChartBarIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { TopNavigation } from "../components/top-navigation";
 import { Button, Card } from "@radix-ui/themes";
 import { RecentMyFlow } from "../components/recent-my-flow";
+import { useQuery } from "@tanstack/react-query";
+import { FlowLogApi } from "@/api/flowLog.api";
+import { useRouter } from "next/navigation";
+import { useUserInfo } from "@/components/UserContext";
 
 export default function Home() {
+  const router = useRouter();
+  const { userInfo } = useUserInfo();
+  const { data: recentFlowLogs } = useQuery({
+    queryKey: ["flowLogs"],
+    queryFn: async () =>
+      await FlowLogApi.getRecentFlowLogs({
+        page: 1,
+        warehouse: userInfo?.warehouseId,
+        lightMode: true,
+      }),
+  });
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       <TopNavigation />
       <main className="flex-1">
-        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
-          {/* Header */}
-          <div className="mb-12">
-            <h1 className="text-3xl font-bold text-foreground md:text-4xl">
-              Dashboard
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          {/* Header Section */}
+          <div className="mb-12 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg mb-6">
+              <Warehouse className="h-12 w-12 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Warehouse Budgeting
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              Manage your warehouse budgeting and petty cash expenses
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Petty cash management
             </p>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Card className="shadow-lg hover:shadow-xl transition-shadow">
-                <div className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <MinusCircle className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-lg font-semibold text-foreground">
-                        Add Expense
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Record a new petty cash expense
-                      </p>
-                    </div>
+          {/* Quick Actions Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            {/* Add Expense Card */}
+            <Card className="group relative overflow-hidden bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200/60">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative p-8">
+                <div className="flex items-start gap-6 mb-6">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
+                    <MinusCircle className="h-8 w-8 text-white" />
                   </div>
-                  <Link href="/expense">
-                    <Button className="mt-4 w-full gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 flex items-center">
-                      <span className="flex-1">Go to Expense form</span>
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Catat Pengeluaran
+                    </h2>
+                    <p className="text-gray-600 leading-relaxed">
+                      Tambahkan pengeluaran kas kecil untuk operasional gudang
+                    </p>
+                  </div>
                 </div>
-              </Card>
-              <Card className="shadow-lg hover:shadow-xl transition-shadow">
-                <div className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <PlusIcon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-lg font-semibold text-foreground">
-                        Add Revenue
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Record a new petty cash revenue
-                      </p>
-                    </div>
+                <Link href="/expense">
+                  <Button className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <span className="flex items-center justify-center gap-3">
+                      Ke Form Pengeluaran
+                      <ArrowRight className="h-5 w-5" />
+                    </span>
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+
+            {/* Add Revenue Card */}
+            <Card className="group relative overflow-hidden bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200/60">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-emerald-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative p-8">
+                <div className="flex items-start gap-6 mb-6">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-green-600 shadow-lg">
+                    <PlusIcon className="h-8 w-8 text-white" />
                   </div>
-                  <Link href="/revenue">
-                    <Button className="mt-4 w-full gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 flex items-center">
-                      <span className="flex-1">Go to Revenue Form</span>
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Catat Pemasukan
+                    </h2>
+                    <p className="text-gray-600 leading-relaxed">
+                      Tambahkan pemasukan kas kecil dari berbagai sumber
+                    </p>
+                  </div>
+                </div>
+                <Link href="/revenue">
+                  <Button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                    <span className="flex items-center justify-center gap-3">
+                      Ke Form Pemasukan
+                      <ArrowRight className="h-5 w-5" />
+                    </span>
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+
+            {/* Stats Overview Card */}
+            <Card className="bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-2xl shadow-xl">
+              <div className="p-8">
+                <h3 className="text-2xl font-bold mb-6">Ringkasan Cepat</h3>
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center pb-4 border-b border-gray-700">
+                    <span className="text-gray-300">Saldo Kas</span>
+                    <span className="text-2xl font-bold text-green-400">
+                      Rp 15.250.000
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pb-4 border-b border-gray-700">
+                    <span className="text-gray-300">Pengeluaran Bulan Ini</span>
+                    <span className="text-xl font-semibold text-red-400">
+                      Rp 3.450.000
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300">Pemasukan Bulan Ini</span>
+                    <span className="text-xl font-semibold text-blue-400">
+                      Rp 8.200.000
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Recent Activity Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-3">
+              <Card className="bg-white rounded-2xl shadow-sm border border-gray-200/60">
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      Aktivitas Terbaru
+                    </h3>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/admin/flow")}
+                      className="rounded-lg border-gray-300 hover:bg-gray-50"
+                    >
+                      Lihat Semua
                     </Button>
-                  </Link>
+                  </div>
+                  <RecentMyFlow logs={recentFlowLogs?.logs} />
                 </div>
               </Card>
             </div>
-            <RecentMyFlow expenses={[]} />
+
+            {/* Quick Links Sidebar */}
+            <div className="space-y-6">
+              <Card className="bg-white rounded-2xl shadow-sm border border-gray-200/60 p-6">
+                <h4 className="font-semibold text-gray-900 mb-4">
+                  Akses Cepat
+                </h4>
+                <div className="space-y-3 ">
+                  <Button
+                    onClick={() => router.push("/admin/stats")}
+                    variant="outline"
+                    className="w-full justify-start gap-3 rounded-lg py-3 flex items-center"
+                  >
+                    <ChartBarIcon className="h-5 w-5" />
+                    Simple Analytic
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/setup")}
+                    variant="outline"
+                    className="w-full justify-start gap-3 rounded-lg py-3 flex items-center"
+                  >
+                    <Settings className="h-5 w-5" />
+                    Pengaturan
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push("/admin/flow")}
+                    className="w-full justify-start gap-3 rounded-lg py-3 flex items-center"
+                  >
+                    <Download className="h-5 w-5" />
+                    Export Data
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Help Card */}
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl border border-blue-200/50 p-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <HelpCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Butuh Bantuan?
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Panduan penggunaan sistem kas kecil
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="rounded-lg border-blue-300 text-blue-600 hover:bg-blue-50"
+                  >
+                    Buka Panduan
+                  </Button>
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       </main>

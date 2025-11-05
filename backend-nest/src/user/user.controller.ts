@@ -4,7 +4,6 @@ import {
   Post,
   Body,
   Patch,
-  Param,
   Delete,
   Req,
   Res,
@@ -21,7 +20,6 @@ import { ErrorResponse } from 'src/models/error.model';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post('/login/ldap')
   @Post('/login/ldap')
   async loginUserLdap(
     @Body() body: LoginRequestLdapDto,
