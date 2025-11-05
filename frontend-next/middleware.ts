@@ -42,5 +42,7 @@ export function middleware(req: NextRequest) {
   }
 }
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|unauthorized).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|csi-logo.png|login|unauthorized).*)",
+  ],
 };

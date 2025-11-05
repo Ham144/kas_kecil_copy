@@ -12,6 +12,7 @@ import { FlowLogApi } from "@/api/flowLog.api";
 import axiosInstance from "@/lib/axios";
 import { FlowCategoryResponse } from "@/types/flowcategory.type";
 import { useRouter } from "next/navigation";
+import { FlowLogCategoryApi } from "@/api/category.api";
 
 export function ExpenseForm({}: {}) {
   const { userInfo } = useUserInfo();
@@ -32,12 +33,7 @@ export function ExpenseForm({}: {}) {
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
     queryKey: ["flow-log-category"],
-    queryFn: async () => {
-      const res = await axiosInstance.get<FlowCategoryResponse[]>(
-        "/flow-log-category"
-      );
-      return res.data;
-    },
+    queryFn: FlowLogCategoryApi.showAll,
   });
 
   // Update warehouse when userInfo changes
@@ -221,7 +217,7 @@ export function ExpenseForm({}: {}) {
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg grid-cols-2">
       <div className="border-b border-border bg-card p-6">
         <h2 className="text-2xl font-semibold text-foreground">Add Expense</h2>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -52,7 +52,7 @@ export default function Home() {
           </div>
 
           {/* Quick Actions Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
             {/* Add Expense Card */}
             <Card className="group relative overflow-hidden bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200/60">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -106,33 +106,6 @@ export default function Home() {
                     </span>
                   </Button>
                 </Link>
-              </div>
-            </Card>
-
-            {/* Stats Overview Card */}
-            <Card className="bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-2xl shadow-xl">
-              <div className="p-8">
-                <h3 className="text-2xl font-bold mb-6">Ringkasan Cepat</h3>
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center pb-4 border-b border-gray-700">
-                    <span className="text-gray-300">Saldo Kas</span>
-                    <span className="text-2xl font-bold text-green-400">
-                      Rp 15.250.000
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pb-4 border-b border-gray-700">
-                    <span className="text-gray-300">Pengeluaran Bulan Ini</span>
-                    <span className="text-xl font-semibold text-red-400">
-                      Rp 3.450.000
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Pemasukan Bulan Ini</span>
-                    <span className="text-xl font-semibold text-blue-400">
-                      Rp 8.200.000
-                    </span>
-                  </div>
-                </div>
               </div>
             </Card>
           </div>

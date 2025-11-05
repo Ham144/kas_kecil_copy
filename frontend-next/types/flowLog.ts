@@ -1,6 +1,7 @@
 export enum FlowLogType {
   IN = "IN",
   OUT = "OUT",
+  ALL = "ALL",
 }
 
 // Base FlowLog interface matching backend FlowlogResponseDto
@@ -121,4 +122,16 @@ export interface AnalyticResponseDto {
 export interface GetAnalyticFilter {
   selectedDate: string;
   selectedWarehouseId?: string;
+}
+
+export interface RecentFlowLogsFilter {
+  type?: FlowLogType;
+  page?: number;
+  warehouse?: string;
+  category?: string;
+  limit?: number;
+  lightMode?: boolean;
+  //admin/flow
+  searchKey?: string;
+  selectedDate?: string;
 }

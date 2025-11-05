@@ -97,7 +97,7 @@ export default function ExpensePage() {
 
             {/* Recent Expenses */}
             <div className="lg:col-span-1">
-              <div className="bg-card rounded-lg border p-6">
+              <div className="bg-card rounded-lg border p-3">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold">Recent Expenses</h2>
                   <button

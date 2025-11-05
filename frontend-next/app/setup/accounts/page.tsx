@@ -68,7 +68,7 @@ export default function AccountsPage() {
                 Setup
               </span>
               <span>/</span>
-              <span className="text-foreground font-medium">Warehouse</span>
+              <span className="text-foreground font-medium">accounts</span>
             </div>
             <h1 className="text-3xl font-semibold text-foreground">
               Account Setup

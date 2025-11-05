@@ -7,6 +7,7 @@ import {
   AnalyticResponseDto,
   FlowLogType,
   GetAnalyticFilter,
+  RecentFlowLogsFilter,
 } from 'src/models/flow-log.model'; // Use local model
 import { PrismaService } from 'src/common/prisma.service';
 import { ErrorResponse } from 'src/models/error.model';
@@ -130,7 +131,7 @@ export class FlowLogService {
     }
   }
 
-  async recentFlowLogs(filters: any) {
+  async recentFlowLogs(filters: RecentFlowLogsFilter) {
     const {
       type,
       category,
@@ -138,18 +139,58 @@ export class FlowLogService {
       page = 1,
       limit = 10,
       lightMode = true,
+      searchKey,
+      selectedDate,
     } = filters;
+
     try {
       const where: any = {};
-      if (type) where.type = type;
-      if (category) where.categoryId = category;
-      if (warehouse) where.warehouseId = warehouse;
 
+      // ✅ Filter dasar
+      if (type !== FlowLogType.ALL) {
+        where.type = type;
+      }
+      if (category) where.categoryId = category;
+      console.log(warehouse);
+      if (warehouse && warehouse !== 'all') {
+        where.warehouseId = warehouse;
+      }
+
+      // ✅ Filter pencarian
+      if (searchKey) {
+        where.title = {
+          contains: searchKey,
+          mode: 'insensitive',
+        };
+      }
+
+      // ✅ Filter tanggal berdasarkan bulan dan tahun
+      if (selectedDate) {
+        // Asumsi selectedDate: "2025-11" atau "2025-11-01"
+        const [yearStr, monthStr] = selectedDate.split('-');
+        const year = Number(yearStr);
+        const month = Number(monthStr); // 1–12
+
+        if (!isNaN(year) && !isNaN(month)) {
+          // Awal bulan (00:00 di tanggal 1)
+          const from = new Date(year, month - 1, 1);
+          // Akhir bulan (23:59:59 di tanggal terakhir)
+          const to = new Date(year, month, 0, 23, 59, 59, 999);
+
+          where.createdAt = {
+            gte: from,
+            lte: to,
+          };
+        }
+      }
+
+      // ✅ Query data dan total paralel
       const [logs, total] = await Promise.all([
         this.prismaService.flowLog.findMany({
-          where,
+          // where,
           skip: (page - 1) * limit,
           take: Number(limit),
+          orderBy: { createdAt: 'desc' },
           include: {
             warehouse: lightMode ? { select: { id: true, name: true } } : true,
             createdBy: lightMode
@@ -161,6 +202,7 @@ export class FlowLogService {
         this.prismaService.flowLog.count({ where }),
       ]);
 
+      // ✅ Kembalikan hasil dengan meta info
       return {
         logs,
         total,
@@ -169,9 +211,10 @@ export class FlowLogService {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
+      console.error('Error in recentFlowLogs:', error);
       return {
         statusCode: 500,
-        message: error.message,
+        message: error.message || 'Internal server error',
       };
     }
   }
@@ -192,8 +235,9 @@ export class FlowLogService {
     // Base filter (bisa diperluas)
     const baseWhere: any = {
       createdAt: { gte: from, lte: to },
-      warehouseId:
-        selectedWarehouseId === 'all' ? undefined : selectedWarehouseId,
+      ...(selectedWarehouseId !== 'all' && {
+        warehouseId: selectedWarehouseId,
+      }),
     };
 
     // 🔹1. Total Inflow
@@ -262,7 +306,9 @@ export class FlowLogService {
     // 🔹5. Budget
     const currentBudget = await this.prismaService.budget.findFirst({
       where: {
-        warehouseId: userInfo.warehouseId,
+        ...(selectedWarehouseId !== 'all' && {
+          warehouseId: selectedWarehouseId,
+        }),
         month: Number(currentMonth + 1),
         year: Number(currentYear),
       },
@@ -276,21 +322,28 @@ export class FlowLogService {
     const budgetSpent = totalOutflow;
     const budgetRemaining = currentBudget.amount - budgetSpent;
 
+    console.log(currentBudget);
+
     // 🔹6. Daily line data (OUT only)
-    const flowOverTimeRaw = await this.prismaService.$queryRaw<
-      { day: number; type: 'IN' | 'OUT'; total: number }[]
-    >`
-    SELECT 
-      EXTRACT(DAY FROM "createdAt")::int AS day,
-      "type",
-      SUM("amount")::float AS total
-    FROM "FlowLog"
-    WHERE "warehouseId" = ${baseWhere.warehouseId}
-      AND EXTRACT(MONTH FROM "createdAt") = ${currentMonth + 1}
-      AND EXTRACT(YEAR FROM "createdAt") = ${currentYear}
-    GROUP BY day, "type"
-    ORDER BY day;
-  `;
+    const warehouseFilter =
+      selectedWarehouseId !== 'all'
+        ? `AND "warehouseId" = '${selectedWarehouseId}'`
+        : '';
+
+    const query = `
+  SELECT 
+    EXTRACT(DAY FROM "createdAt")::int AS day,
+    "type",
+    SUM("amount")::float AS total
+  FROM "FlowLog"
+  WHERE EXTRACT(MONTH FROM "createdAt") = ${currentMonth + 1}
+    AND EXTRACT(YEAR FROM "createdAt") = ${currentYear}
+    ${warehouseFilter}
+  GROUP BY day, "type"
+  ORDER BY day;
+`;
+
+    const flowOverTimeRaw = await this.prismaService.$queryRawUnsafe(query);
 
     // Gabungkan jadi satu objek per hari
     const grouped: Record<number, { IN: number; OUT: number }> = {};

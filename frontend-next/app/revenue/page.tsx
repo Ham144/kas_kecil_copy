@@ -54,13 +54,7 @@ export default function RevenuePage() {
   );
 
   // Error state component
-  const ErrorState = ({
-    error,
-    onRetry,
-  }: {
-    error: any;
-    onRetry: () => void;
-  }) => (
+  const ErrorState = ({ error }: { error: any; onRetry: () => void }) => (
     <div className="flex items-center justify-center p-8">
       <div className="text-center">
         <AlertCircle className="mx-auto h-8 w-8 text-destructive" />
@@ -86,18 +80,14 @@ export default function RevenuePage() {
             {/* Expense Form */}
             <div className="lg:col-span-2">
               <div className="bg-card rounded-lg border p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold tracking-tight">
-                    Add Expense
-                  </h2>
-                </div>
+                <div className="flex items-center justify-between mb-6"></div>
                 <RevenueForm />
               </div>
             </div>
 
             {/* Recent Expenses */}
             <div className="lg:col-span-1">
-              <div className="bg-card rounded-lg border p-6">
+              <div className="bg-card rounded-lg border p-3">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold">Recent Revenues</h2>
                   <button

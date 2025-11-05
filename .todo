@@ -11,4 +11,10 @@ setup biaya apa saja: parkir, BBM
 [x] Flow Log category
 [x] global setting
 [x] register expense
+[x] statistic graph 
 [x] register revenue
+[x] admin flow detail logs
+[x] filtering /flow masih belum beres
+[] revisi, kas kecil(stateless) sumTotalFlowout - sumTotalFlowIn
+[] filtering flow per hari
+[] export data flow logs

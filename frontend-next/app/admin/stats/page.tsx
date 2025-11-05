@@ -31,14 +31,10 @@ import { FlowLogApi } from "@/api/flowLog.api";
 import { GetAnalyticFilter } from "@/types/flowLog";
 
 export default function StatsPage() {
-  const [selectedMonth, setSelectedMonth] = useState(
-    new Date().toISOString().slice(0, 7)
-  );
-  const [selectedWarehouse, setSelectedWarehouse] = useState("warehouse-1");
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [filter, setFilter] = useState<GetAnalyticFilter>({
-    selectedDate: new Date().toISOString().split("T")[0],
+    selectedDate: `${new Date().getFullYear()}-${new Date().getMonth() + 1}`,
     selectedWarehouseId: "all",
   });
 
@@ -249,7 +245,7 @@ export default function StatsPage() {
                     Warehouse
                   </label>
                   <select
-                    value={selectedWarehouse}
+                    value={filter.selectedWarehouseId}
                     onChange={(e) =>
                       setFilter((prev) => ({
                         ...prev,

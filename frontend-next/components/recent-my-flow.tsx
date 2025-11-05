@@ -1,7 +1,7 @@
-import { Calendar, Tag, DollarSign } from "lucide-react";
+import { Calendar, Tag } from "lucide-react";
 import { FlowLog, FlowLogType } from "@/types/flowLog";
 
-export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
+export function RecentMyFlow({ logs }: { logs: FlowLog[]; type: FlowLogType }) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -23,13 +23,6 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[] }) {
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-lg">
-      <div className="border-b border-border bg-card p-6">
-        <h3 className="text-lg font-semibold text-foreground">Recent Flow </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Last 3 submitted records
-        </p>
-      </div>
-
       <div className="divide-y divide-border">
         {logs?.length === 0 ? (
           <div className="p-6 text-center">

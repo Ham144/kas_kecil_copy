@@ -2,18 +2,9 @@ import axiosInstance from "@/lib/axios";
 import {
   AnalyticResponseDto,
   CreateFlowLogDto,
-  FlowLogType,
   GetAnalyticFilter,
+  RecentFlowLogsFilter,
 } from "@/types/flowLog";
-
-type recentFlowLogsFilter = {
-  type?: FlowLogType;
-  page?: number;
-  warehouse?: string;
-  category?: string;
-  limit?: number;
-  lightMode?: boolean;
-};
 
 export const FlowLogApi = {
   uploadFiles: async (files: File[]) => {
@@ -39,13 +30,18 @@ export const FlowLogApi = {
     return res.data;
   },
 
-  getRecentFlowLogs: async (filter: recentFlowLogsFilter) => {
+  getRecentFlowLogs: async (filter: RecentFlowLogsFilter) => {
     const params = new URLSearchParams();
 
     if (filter.type) params.set("type", filter.type);
     if (filter.page) params.set("page", filter.page.toString());
     if (filter.category) params.set("category", filter.category);
     if (filter.warehouse) params.set("warehouse", filter.warehouse);
+    if (filter.searchKey) params.set("searchKey", filter.searchKey);
+    if (filter.selectedDate) params.set("selectedDate", filter.selectedDate);
+
+    if (filter.limit) params.set("limit", filter.limit.toString());
+    if (filter.lightMode) params.set("lightMode", filter.lightMode.toString());
 
     const res = await axiosInstance.get("/api/flow-log", { params });
     return res?.data?.data;
