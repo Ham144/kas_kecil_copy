@@ -39,6 +39,8 @@ export const FlowLogApi = {
     if (filter.warehouse) params.set("warehouse", filter.warehouse);
     if (filter.searchKey) params.set("searchKey", filter.searchKey);
     if (filter.selectedDate) params.set("selectedDate", filter.selectedDate);
+    if (filter.isDownload)
+      params.set("isDownload", filter.isDownload.toString());
 
     if (filter.limit) params.set("limit", filter.limit.toString());
     if (filter.lightMode) params.set("lightMode", filter.lightMode.toString());

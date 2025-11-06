@@ -24,11 +24,9 @@ async function bootstrap() {
 
     // Enable cookie parser
     app.use(cookieParser());
-    console.log('Cookie parser configured');
 
     // Serve static files from uploads directory
     app.use('/uploads', express.static('uploads'));
-    console.log('Static file serving configured');
 
     // Enable CORS
     app.enableCors({
@@ -40,7 +38,6 @@ async function bootstrap() {
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     });
-    console.log('CORS configured');
 
     await app.listen(3001);
     console.log('✓ Server listening on port 3001');

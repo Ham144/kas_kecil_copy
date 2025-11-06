@@ -134,4 +134,5 @@ export interface RecentFlowLogsFilter {
   //admin/flow
   searchKey?: string;
   selectedDate?: string;
+  isDownload?: boolean;
 }

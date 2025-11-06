@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
   Filter,
@@ -23,11 +23,13 @@ import { FlowCategoryResponse } from "@/types/flowcategory.type";
 import { FlowLogCategoryApi } from "@/api/category.api";
 import { WarehouseApi } from "@/api/warehouse";
 import { useUserInfo } from "@/components/UserContext";
+import { ModePeriod } from "../stats/page";
+import { toast } from "sonner";
+import { BASE_URL } from "@/lib/constant";
 
 export default function CashFlow() {
   const { userInfo } = useUserInfo();
-
-  console.log(userInfo);
+  const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
 
   const initiatFilter: RecentFlowLogsFilter = {
     category: "all",
@@ -63,32 +65,26 @@ export default function CashFlow() {
     enabled: !!userInfo?.warehouseId,
   });
 
-  const handleExportPDF = () => {
-    const reportData = flows?.logs.map((expense: any) => ({
-      Title: expense.title,
-      Category: expense.category,
-      Warehouse: expense.warehouseName,
-      Amount: formatCurrency(expense.amount),
-      Date: formatDate(expense.date),
-      Type: expense.type === "in" ? "Flow In" : "Flow Out",
-    }));
-
-    const csvContent = [
-      Object.keys(reportData[0] || {}).join(","),
-      ...reportData.map((row: any) =>
-        Object.values(row)
-          .map((val) => `"${val}"`)
-          .join(",")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `expense-report-${filter.selectedDate}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const handleExportPDF = async () => {
+    try {
+      const downloadURL = await FlowLogApi.getRecentFlowLogs({
+        ...filter,
+        isDownload: true,
+      });
+      if (!downloadURL?.url) {
+        toast.error("File tidak tersedia");
+        return;
+      }
+      // Normalize URL: remove trailing slash from BASE_URL and leading slash from path
+      const baseUrl = BASE_URL.replace(/\/$/, "");
+      const path = downloadURL.url.startsWith("/")
+        ? downloadURL.url
+        : `/${downloadURL.url}`;
+      const fullUrl = `${baseUrl}${path}`;
+      window.open(fullUrl, "_blank", "nopener,noreferrer");
+    } catch (error) {
+      toast.error("Gagal mengunduh file CSV");
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -106,6 +102,22 @@ export default function CashFlow() {
       year: "numeric",
     });
   };
+
+  useEffect(() => {
+    if (modePeriod == ModePeriod.DATE) {
+      setFilter((prevFilter) => ({
+        ...prevFilter,
+        selectedDate: new Date().toISOString().split("T")[0],
+      }));
+    } else if (modePeriod == ModePeriod.MONTH) {
+      setFilter((prevFilter) => ({
+        ...prevFilter,
+        selectedDate: `${new Date().getFullYear()}-${
+          new Date().getMonth() + 1
+        }`,
+      }));
+    }
+  }, [modePeriod]);
   return (
     <div className="min-h-screen bg-background">
       <TopNavigation />
@@ -173,13 +185,32 @@ export default function CashFlow() {
 
               {/* Filters Grid */}
               <div className="grid gap-4 md:grid-cols-3">
+                {/* mode period  */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Periode Mode
+                  </label>
+                  <select
+                    value={modePeriod}
+                    onChange={(e) =>
+                      setModePeriod(e.target.value as ModePeriod)
+                    }
+                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {Object.values(ModePeriod).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 {/* Month Picker */}
                 <div>
                   <label className="block text-sm font-medium text-foreground">
                     Month
                   </label>
                   <input
-                    type="month"
+                    type={modePeriod}
                     value={filter.selectedDate}
                     onChange={(e) => {
                       setFilter({
@@ -367,7 +398,7 @@ export default function CashFlow() {
               )}
             </div>
           </Card>
-          <div className="flex items-center justify-between px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="flex mt-3 items-center justify-between px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-200">
             {/* Info Halaman */}
             <div className="flex-1 text-sm text-gray-600">
               Menampilkan halaman{" "}

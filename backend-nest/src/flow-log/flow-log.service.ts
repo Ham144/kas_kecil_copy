@@ -15,11 +15,16 @@ import {
   FlowLogCreateDto,
   FlowlogResponseDto,
 } from 'src/models/flow-log.model';
-import { WarehouseResponseDto } from 'src/models/warehouse.model';
+import { GenerateCsvService } from 'src/common/generateCsv.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class FlowLogService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private generateCsvService: GenerateCsvService,
+    private redisService: RedisService,
+  ) {}
 
   async createExpense(
     createFlowLogDto: FlowLogCreateDto,
@@ -141,6 +146,7 @@ export class FlowLogService {
       lightMode = true,
       searchKey,
       selectedDate,
+      isDownload,
     } = filters;
 
     try {
@@ -150,14 +156,15 @@ export class FlowLogService {
       if (type !== FlowLogType.ALL) {
         where.type = type;
       }
-      if (category) where.categoryId = category;
-      console.log(warehouse);
+      if (category != 'all' && category) {
+        where.categoryId = String(category);
+      }
       if (warehouse && warehouse !== 'all') {
         where.warehouseId = warehouse;
       }
 
       // ✅ Filter pencarian
-      if (searchKey) {
+      if (searchKey && !isDownload) {
         where.title = {
           contains: searchKey,
           mode: 'insensitive',
@@ -166,28 +173,70 @@ export class FlowLogService {
 
       // ✅ Filter tanggal berdasarkan bulan dan tahun
       if (selectedDate) {
+        let from: Date;
+        let to: Date;
         // Asumsi selectedDate: "2025-11" atau "2025-11-01"
-        const [yearStr, monthStr] = selectedDate.split('-');
+        const [yearStr, monthStr, dateStr] = selectedDate.split('-');
         const year = Number(yearStr);
         const month = Number(monthStr); // 1–12
+        const date = Number(dateStr);
 
-        if (!isNaN(year) && !isNaN(month)) {
-          // Awal bulan (00:00 di tanggal 1)
-          const from = new Date(year, month - 1, 1);
-          // Akhir bulan (23:59:59 di tanggal terakhir)
-          const to = new Date(year, month, 0, 23, 59, 59, 999);
+        if (!isNaN(year) && !isNaN(month) && !isNaN(date)) {
+          //mode date
+          from = new Date(year, month - 1, date);
+          to = new Date(year, month, new Date().getMonth(), 23, 59, 59, 999);
+          where.createdAt = {
+            gte: from,
+            lte: to,
+          };
+        } else if (!isNaN(year) && !isNaN(month)) {
+          //mode month
+          from = new Date(year, month - 1, 1);
+          to = new Date(year, month, 0, 23, 59, 59, 999);
 
           where.createdAt = {
             gte: from,
             lte: to,
           };
+        } else {
+          return new BadRequestException('Invalid date format');
         }
+      }
+
+      if (isDownload) {
+        if (this.redisService.get(JSON.stringify(where))) {
+          const csvFile = await this.redisService.get(JSON.stringify(where));
+
+          return {
+            blob: csvFile,
+          };
+        }
+
+        const logs = await this.prismaService.flowLog.findMany({
+          where,
+          include: {
+            warehouse: true,
+            createdBy: true,
+            category: true,
+          },
+        });
+
+        const csvFile = await this.generateCsvService.generateCsv(
+          logs,
+          this.redisService,
+        );
+
+        await this.redisService.set(JSON.stringify(where), csvFile, 3600); //1 hour
+
+        return {
+          blob: csvFile,
+        };
       }
 
       // ✅ Query data dan total paralel
       const [logs, total] = await Promise.all([
         this.prismaService.flowLog.findMany({
-          // where,
+          where,
           skip: (page - 1) * limit,
           take: Number(limit),
           orderBy: { createdAt: 'desc' },
@@ -211,7 +260,6 @@ export class FlowLogService {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      console.error('Error in recentFlowLogs:', error);
       return {
         statusCode: 500,
         message: error.message || 'Internal server error',
@@ -222,15 +270,24 @@ export class FlowLogService {
   async getAnalytics(userInfo: any, filter: GetAnalyticFilter) {
     const { selectedDate, selectedWarehouseId } = filter;
 
+    const [yearStr, monthStr, dateStr] = selectedDate.toString().split('-');
+
     const selectedDateObj = new Date(selectedDate);
     const currentMonth = selectedDateObj.getMonth(); //jangan +1 disini, memang gitu
     const currentYear = selectedDateObj.getFullYear();
 
-    // Awal bulan ini (misal 2025-11-01 00:00:00)
-    const from = new Date(currentYear, currentMonth, 1);
+    let from;
+    let to;
 
-    // Akhir bulan ini (misal 2025-11-30 23:59:59)
-    const to = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+    if (dateStr) {
+      //mode date
+      from = new Date(currentYear, currentMonth, Number(dateStr));
+      to = new Date(currentYear, currentMonth, Number(dateStr), 23, 59, 59);
+    } else {
+      //mode month
+      from = new Date(currentYear, currentMonth, 1);
+      to = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+    }
 
     // Base filter (bisa diperluas)
     const baseWhere: any = {
@@ -304,60 +361,63 @@ export class FlowLogService {
     );
 
     // 🔹5. Budget
-    const currentBudget = await this.prismaService.budget.findFirst({
-      where: {
-        ...(selectedWarehouseId !== 'all' && {
-          warehouseId: selectedWarehouseId,
-        }),
-        month: Number(currentMonth + 1),
-        year: Number(currentYear),
-      },
-    });
+    const currentBudget =
+      selectedWarehouseId === 'all'
+        ? { amount: 0 }
+        : await this.prismaService.budget.findFirst({
+            where: {
+              ...(selectedWarehouseId !== 'all' && {
+                warehouseId: selectedWarehouseId,
+              }),
+              month: Number(currentMonth + 1),
+              year: Number(currentYear),
+            },
+          });
 
-    if (!currentBudget)
+    if (typeof currentBudget.amount !== 'number')
       throw new NotFoundException(
         'Budget warehouse anda untuk bulan ini belum dibuat. Silahkan setup terlebih dahulu.',
       );
 
-    const budgetSpent = totalOutflow;
+    const budgetSpent = totalInflow - totalOutflow;
     const budgetRemaining = currentBudget.amount - budgetSpent;
 
-    console.log(currentBudget);
+    // 🔹6. Daily line data/ flow over time (OUT &IN)
+    //filternya beda sendiri
+    const startMonth = new Date(currentYear, currentMonth, 1);
+    const endMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+    const flowOverTimeRaw = await this.prismaService.flowLog.groupBy({
+      by: ['createdAt', 'type'],
+      _sum: { amount: true },
+      where: {
+        createdAt: { gte: startMonth, lte: endMonth },
+        ...(selectedWarehouseId !== 'all' && {
+          warehouseId: selectedWarehouseId,
+        }),
+      },
+      orderBy: { createdAt: 'asc' },
+    });
 
-    // 🔹6. Daily line data (OUT only)
-    const warehouseFilter =
-      selectedWarehouseId !== 'all'
-        ? `AND "warehouseId" = '${selectedWarehouseId}'`
-        : '';
+    const flowOverTime = flowOverTimeRaw.reduce(
+      (acc, curr) => {
+        // pastikan dibuat string tanggal tanpa jam
+        const date = curr.createdAt.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
-    const query = `
-  SELECT 
-    EXTRACT(DAY FROM "createdAt")::int AS day,
-    "type",
-    SUM("amount")::float AS total
-  FROM "FlowLog"
-  WHERE EXTRACT(MONTH FROM "createdAt") = ${currentMonth + 1}
-    AND EXTRACT(YEAR FROM "createdAt") = ${currentYear}
-    ${warehouseFilter}
-  GROUP BY day, "type"
-  ORDER BY day;
-`;
-
-    const flowOverTimeRaw = await this.prismaService.$queryRawUnsafe(query);
-
-    // Gabungkan jadi satu objek per hari
-    const grouped: Record<number, { IN: number; OUT: number }> = {};
-    for (const row of flowOverTimeRaw) {
-      if (!grouped[row.day]) grouped[row.day] = { IN: 0, OUT: 0 };
-      grouped[row.day][row.type] = row.total;
-    }
-
-    // Ubah ke array cocok untuk chart
-    const flowOverTime = Object.entries(grouped).map(([day, totals]) => ({
-      date: day,
-      IN: totals.IN || 0,
-      OUT: totals.OUT || 0,
-    }));
+        // cari apakah tanggal sudah ada di akumulasi
+        const existing = acc.find((item) => item.date === date);
+        if (existing) {
+          existing[curr.type] =
+            (existing[curr.type] || 0) + (curr._sum.amount ?? 0);
+        } else {
+          acc.push({
+            date,
+            [curr.type]: curr._sum.amount ?? 0,
+          });
+        }
+        return acc;
+      },
+      [] as { date: string; IN?: number; OUT?: number }[],
+    );
 
     // 🔹8. Bentuk response final (pertahankan field lama, tambah field baru)
     const analytics: AnalyticResponseDto = {

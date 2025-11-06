@@ -13,6 +13,7 @@ import {
   WarehouseCreateDto,
   WarehouseUpdateDto,
 } from 'src/models/warehouse.model';
+import { Auth } from 'src/common/auth.decorator';
 
 @Controller('/api/warehouse')
 export class WarehouseController {
@@ -29,13 +30,8 @@ export class WarehouseController {
   }
 
   @Get()
-  list(@Query('searchKey') searchKey?: string) {
-    return this.warehouseService.getWarehouses(searchKey);
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.warehouseService.getWarehouse(id);
+  list(@Query('searchKey') searchKey?: string, @Auth() userInfo?: any) {
+    return this.warehouseService.getWarehouses(searchKey, userInfo);
   }
 
   @Patch(':id')

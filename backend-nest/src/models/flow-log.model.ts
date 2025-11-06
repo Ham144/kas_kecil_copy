@@ -30,7 +30,7 @@ export enum FlowLogType {
 export class AnalyticResponseDto {
   totalInflow: number;
   totalOutflow: number;
-  budgetRemaining: number;
+  budgetRemaining: number; //jadi
   budgetSpent: number;
   topCategories: object[];
   topWarehouses: object[];
@@ -53,4 +53,5 @@ export class RecentFlowLogsFilter {
   //admin/flow
   searchKey?: string;
   selectedDate?: string;
+  isDownload?: boolean;
 }

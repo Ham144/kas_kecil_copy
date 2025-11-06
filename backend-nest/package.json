@@ -29,6 +29,7 @@
     "@types/multer": "^2.0.0",
     "cookie-parser": "^1.4.7",
     "ioredis": "^5.8.2",
+    "json2csv": "6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "ldapjs-client": "^0.1.7",
     "multer": "^2.0.2",

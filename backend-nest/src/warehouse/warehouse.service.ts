@@ -143,16 +143,34 @@ export class WarehouseService {
     return this.mapWarehouse(warehouse);
   }
 
-  async getWarehouses(searchKey?: string): Promise<WarehouseResponseDto[]> {
+  async getWarehouses(
+    searchKey?: string,
+    userInfo?: any,
+  ): Promise<WarehouseResponseDto[]> {
+    const isSuperAdmin = userInfo?.description === 'IT';
+
+    // Bentuk where dasar
+    const where: any = {
+      ...(searchKey && {
+        name: {
+          contains: searchKey,
+          mode: 'insensitive',
+        },
+      }),
+    };
+
+    // Jika bukan superadmin, tambahkan filter member
+    if (!isSuperAdmin) {
+      where.members = {
+        some: {
+          username: userInfo.username,
+        },
+      };
+    }
+
+    // Query prisma
     const warehouses = await this.prismaService.warehouse.findMany({
-      where: searchKey
-        ? {
-            name: {
-              contains: searchKey,
-              mode: 'insensitive',
-            },
-          }
-        : undefined,
+      where,
       include: {
         members: true,
         budgets: true,
@@ -165,23 +183,6 @@ export class WarehouseService {
     return warehouses.map((warehouse) => this.mapWarehouse(warehouse));
   }
 
-  async getWarehouse(id: string): Promise<WarehouseResponseDto> {
-    const warehouse = await this.prismaService.warehouse.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        members: true,
-        budgets: true,
-      },
-    });
-
-    if (!warehouse) {
-      throw new NotFoundException('Warehouse tidak ditemukan');
-    }
-
-    return this.mapWarehouse(warehouse);
-  }
   async deleteWarehouse(id: string): Promise<SimpleSuccess> {
     try {
       const result = await this.prismaService.warehouse.deleteMany({

@@ -55,6 +55,8 @@ export class UserController {
   async refreshToken(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req?.cookies['refresh_token'];
 
+    console.log(refreshToken);
+
     if (!refreshToken) {
       return res.status(401).json({ message: 'No refresh token' });
     }

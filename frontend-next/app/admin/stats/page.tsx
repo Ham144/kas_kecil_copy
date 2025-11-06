@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 import { Card } from "@radix-ui/themes";
 import {
@@ -29,17 +29,25 @@ import { TopNavigation } from "../../../components/top-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { FlowLogApi } from "@/api/flowLog.api";
 import { GetAnalyticFilter } from "@/types/flowLog";
+import { useUserInfo } from "@/components/UserContext";
+
+export enum ModePeriod {
+  DATE = "date",
+  MONTH = "month",
+}
 
 export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const { userInfo } = useUserInfo();
+  const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
   const [filter, setFilter] = useState<GetAnalyticFilter>({
     selectedDate: `${new Date().getFullYear()}-${new Date().getMonth() + 1}`,
-    selectedWarehouseId: "all",
+    selectedWarehouseId: userInfo?.warehouseId,
   });
 
   const { data: analytic } = useQuery({
-    queryKey: ["flow-logs"],
+    queryKey: ["flow-logs", filter, userInfo?.warehouseId, modePeriod],
     queryFn: async () => {
       try {
         const res = await FlowLogApi.getAnalytic(filter);
@@ -51,6 +59,7 @@ export default function StatsPage() {
         return null;
       }
     },
+    enabled: !!userInfo?.warehouseId,
   });
 
   const COLORS = [
@@ -70,6 +79,30 @@ export default function StatsPage() {
     }).format(value);
   };
 
+  useEffect(() => {
+    setFilter((prevFilter) => ({
+      ...prevFilter,
+      selectedWarehouseId: userInfo?.warehouseId,
+    }));
+  }, [userInfo?.warehouseId]);
+
+  useEffect(() => {
+    if (modePeriod == ModePeriod.DATE) {
+      setFilter((prevFilter) => ({
+        ...prevFilter,
+        selectedDate: new Date().toISOString().split("T")[0],
+      }));
+    } else if (modePeriod == ModePeriod.MONTH) {
+      setFilter((prevFilter) => ({
+        ...prevFilter,
+        selectedDate: `${new Date().getFullYear()}-${
+          new Date().getMonth() + 1
+        }`,
+      }));
+    }
+  }, [modePeriod]);
+
+  console.log(filter.selectedDate);
   if (isErrorAnalytic) {
     return (
       <div className="min-h-screen bg-background">
@@ -98,7 +131,7 @@ export default function StatsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Total Spent This Month
+                      Jumlah Kas saat ini
                     </p>
                     <p className="font-medium text-muted-foreground text-xs">
                       "total out-flow" - "total in-flow"
@@ -120,7 +153,7 @@ export default function StatsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Budget Remaining
+                      sisa terhadapat pencapaian
                     </p>
                     <p className="font-medium text-muted-foreground text-xs">
                       "current month budget" - "budget spent"
@@ -129,7 +162,13 @@ export default function StatsPage() {
                       {formatCurrency(analytic?.budgetRemaining || 0)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      of {formatCurrency(analytic?.currentMonthBudget || 0)}
+                      dari budget{" "}
+                      <span className="badge font-bold">
+                        {analytic?.currentMonthBudget == 0
+                          ? "tentukan warehouse"
+                          : "Rp. " +
+                            formatCurrency(analytic?.currentMonthBudget || 0)}
+                      </span>
                     </p>
                   </div>
                   <div
@@ -176,7 +215,7 @@ export default function StatsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Total in-flow This Month
+                      Total in-flow This {modePeriod}
                     </p>
                     <p className="mt-2 text-2xl font-bold text-foreground">
                       {formatCurrency(analytic?.totalInflow || 0)}
@@ -194,7 +233,7 @@ export default function StatsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Total out-flow This Month
+                      Total out-flow This {[modePeriod]}
                     </p>
                     <p className="mt-2 text-2xl font-bold text-foreground">
                       {formatCurrency(analytic?.totalOutflow || 0)}
@@ -220,14 +259,33 @@ export default function StatsPage() {
             </div>
 
             <div className="space-y-4 p-6">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* mode period  */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Periode Mode
+                  </label>
+                  <select
+                    value={modePeriod}
+                    onChange={(e) =>
+                      setModePeriod(e.target.value as ModePeriod)
+                    }
+                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {Object.values(ModePeriod).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 {/* Month Picker */}
                 <div>
                   <label className="block text-sm font-medium text-foreground">
                     Month
                   </label>
                   <input
-                    type="month"
+                    type={modePeriod}
                     value={filter.selectedDate}
                     onChange={(e) =>
                       setFilter((prev) => ({
@@ -246,6 +304,7 @@ export default function StatsPage() {
                   </label>
                   <select
                     value={filter.selectedWarehouseId}
+                    disabled={userInfo?.description !== "IT"}
                     onChange={(e) =>
                       setFilter((prev) => ({
                         ...prev,
@@ -342,35 +401,50 @@ export default function StatsPage() {
                 )}
               </div>
             </Card>
-            {/* Line Chart */}
             <Card className="shadow-lg md:col-span-2">
               <div className="border-b border-border bg-card p-6">
                 <h3 className="text-lg font-semibold text-foreground">
-                  Flow Over Time
+                  Flow Over Time (current month)
                 </h3>
               </div>
               <div className="p-6">
-                {analytic?.flowOverTime && analytic?.flowOverTime.length > 0 ? (
+                {analytic?.flowOverTime && analytic.flowOverTime.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={analytic.flowOverTime}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={(date) =>
+                          new Date(date).toLocaleDateString("id-ID", {
+                            day: "2-digit",
+                            month: "short",
+                          })
+                        }
+                      />
                       <YAxis />
                       <Tooltip
-                        formatter={(value) => formatCurrency(value as number)}
+                        formatter={(value: number) => formatCurrency(value)}
+                        labelFormatter={(date) =>
+                          new Date(date).toLocaleDateString("id-ID", {
+                            day: "2-digit",
+                            month: "long",
+                          })
+                        }
                       />
                       <Legend />
                       <Line
                         type="monotone"
                         dataKey="IN"
-                        stroke="hsl(var(--chart-2))"
+                        stroke="#22c55e"
                         name="Pemasukan"
+                        dot={false}
                       />
                       <Line
                         type="monotone"
                         dataKey="OUT"
-                        stroke="hsl(var(--chart-3))"
+                        stroke="#ef4444"
                         name="Pengeluaran"
+                        dot={false}
                       />
                     </LineChart>
                   </ResponsiveContainer>

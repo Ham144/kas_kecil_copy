@@ -10,6 +10,7 @@ import { AuthMiddleware } from './auth.middleware';
 // import { R2Service } from './r2.service';
 import { UploadImageLocalService } from './uploadImageLocal.service';
 import { HttpExceptionFilter } from './http-exception-filter';
+import { GenerateCsvService } from './generateCsv.service';
 
 @Global()
 @Module({
@@ -32,6 +33,7 @@ import { HttpExceptionFilter } from './http-exception-filter';
     },
     UploadImageLocalService,
     HttpExceptionFilter,
+    GenerateCsvService,
   ],
   exports: [
     PrismaService,
@@ -39,6 +41,7 @@ import { HttpExceptionFilter } from './http-exception-filter';
     // R2Service,
     UploadImageLocalService,
     HttpExceptionFilter,
+    GenerateCsvService,
   ],
 })
 export class CommonModule implements NestModule {
