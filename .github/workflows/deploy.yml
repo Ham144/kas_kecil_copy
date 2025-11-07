@@ -11,7 +11,7 @@ jobs:
 
     # pastikan sudah terinstall di server tujuan :
     # - nodejs
-    # - npm
+    # - pnpm atau npm based on dev
     # - pm2 dan sudah setup
     # - git
     # - postgresql
@@ -31,13 +31,13 @@ jobs:
           cd ..
 
           cd frontend-next
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
 
           cd ../backend-nest
-          npm install
+          pnpm install
           npx prisma migrate dev --name init
-          npm run build
+          pnpm run build
 
           pm2 restart all || pm2 start dist/main.js --name backend
 
