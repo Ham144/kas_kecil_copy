@@ -27,23 +27,17 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          if [ ! -d "kas_kecil_copy" ]; then
-            echo "📦 Folder belum ada, cloning..."
-            git clone git@github.com:Ham144/kas_kecil_copy.git
-          else
-            echo "🔁 Folder sudah ada, pull update..."
-            cd kas_kecil_copy
-            git pull origin master
-            cd ..
-          fi
+          git pull origin master
+          cd ..
 
           cd kas_kecil_copy/frontend-next
-          pnpm install
-          pnpm run build
+          npm install
+          npm run build
 
           cd ../backend-nest
-          pnpm install
-          pnpm run build
+          npm install
+          npx prisma migrate dev --name init
+          npm run build
 
           pm2 restart all || pm2 start dist/main.js --name backend
 
