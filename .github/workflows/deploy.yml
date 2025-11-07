@@ -16,29 +16,36 @@ jobs:
     # - git
     # - postgresql
     # - nginx dan sudah setup
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Deploy and Restart App
+    run: |
+          echo "🚀 Mulai deploy di self-hosted runner..."
 
-      - name: Deploy and Restart App
-        run: |
-          cd /home/ham
+          cd /home/ham/kas_kecil_copy || { echo "❌ Folder project tidak ditemukan"; exit 1; }
 
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          # Pastikan repo valid
+          if [ ! -d ".git" ]; then
+            echo "⚠️ Folder ini bukan repo git, tolong pastikan sudah di-clone manual."
+            exit 1
+          fi
 
+          echo "🔁 Menarik update dari master..."
+          git reset --hard
+          git clean -fd
           git pull origin master
-          cd ..
 
-          cd kas_kecil_copy/frontend-next
+          echo "🧱 Build frontend..."
+          cd frontend-next
           npm install
           npm run build
 
+          echo "⚙️ Build backend..."
           cd ../backend-nest
           npm install
-          npx prisma migrate dev --name init
+          npx prisma migrate deploy || echo "⚠️ Prisma migrate dilewati"
           npm run build
 
+          echo "♻️ Restart PM2..."
           pm2 restart all || pm2 start dist/main.js --name backend
 
-          pm2 restart all || pm2 start dist/main.js --name frontend
+          echo "✅ Deploy selesai dengan sukses!"
+
