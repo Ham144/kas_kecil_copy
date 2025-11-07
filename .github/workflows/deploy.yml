@@ -23,7 +23,8 @@ jobs:
       - name: Deploy and Restart App
         run: |
           echo "🚀 Mulai deploy di self-hosted runner..."
-
+          # Tambahkan global npm bin ke PATH (fix pnpm not found)
+          export PATH=$PATH:/usr/local/bin
           cd /home/ham/kas_kecil_copy || { echo "❌ Folder project tidak ditemukan"; exit 1; }
 
           mkdir -p ~/.ssh
