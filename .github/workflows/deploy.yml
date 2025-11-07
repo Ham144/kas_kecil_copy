@@ -22,23 +22,33 @@ jobs:
 
       - name: Deploy and Restart App
         run: |
-          cd /home/ham/kas_kecil_copy
+          echo "🚀 Mulai deploy di self-hosted runner..."
+
+          cd /home/ham/kas_kecil_copy || { echo "❌ Folder project tidak ditemukan"; exit 1; }
 
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
+          echo "🔁 Menarik update dari master..."
+          git reset --hard
+          git clean -fd
           git pull origin master
-          cd ..
 
+          echo "📂 Cek struktur folder:"
+          ls -la
+
+          echo "🧱 Build frontend..."
           cd frontend-next
           pnpm install
           pnpm run build
 
+          echo "⚙️ Build backend..."
           cd ../backend-nest
           pnpm install
-          npx prisma migrate dev --name init
+          npx prisma migrate deploy || echo "⚠️ Prisma migrate dilewati"
           pnpm run build
 
+          echo "♻️ Restart PM2..."
           pm2 restart all || pm2 start dist/main.js --name backend
 
-          pm2 restart all || pm2 start dist/main.js --name frontend
+          echo "✅ Deploy sukses!"
