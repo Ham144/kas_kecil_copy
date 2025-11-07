@@ -5,6 +5,11 @@ export interface FlowCategoryResponse {
   description: string;
 }
 
+export enum ModePeriod {
+  DATE = "date",
+  MONTH = "month",
+}
+
 export interface FlowCategoryCreate {
   name: string;
   description?: string;

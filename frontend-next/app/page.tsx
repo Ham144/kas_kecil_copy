@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FlowLogApi } from "@/api/flowLog.api";
 import { useRouter } from "next/navigation";
 import { useUserInfo } from "@/components/UserContext";
+import { FlowLogType } from "@/types/flowLog";
 
 export default function Home() {
   const router = useRouter();
@@ -127,7 +128,10 @@ export default function Home() {
                       Lihat Semua
                     </Button>
                   </div>
-                  <RecentMyFlow logs={recentFlowLogs?.logs} />
+                  <RecentMyFlow
+                    logs={recentFlowLogs?.logs}
+                    type={FlowLogType.ALL}
+                  />
                 </div>
               </Card>
             </div>

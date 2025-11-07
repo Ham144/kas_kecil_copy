@@ -17,6 +17,8 @@ import {
 } from 'src/models/flow-log.model';
 import { GenerateCsvService } from 'src/common/generateCsv.service';
 import { RedisService } from 'src/redis/redis.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class FlowLogService {
@@ -207,8 +209,30 @@ export class FlowLogService {
         if (this.redisService.get(JSON.stringify(where))) {
           const csvFile = await this.redisService.get(JSON.stringify(where));
 
+          //make csv in /uploads/report
+          fs.promises.writeFile(
+            path.join(
+              process.cwd(),
+              'uploads',
+              'report',
+              'cached-redis-report.csv',
+            ),
+            csvFile,
+          );
+
+          setTimeout(() => {
+            fs.promises.unlink(
+              path.join(
+                process.cwd(),
+                'uploads',
+                'report',
+                'cached-redis-report.csv',
+              ),
+            );
+          }, 10000);
+
           return {
-            blob: csvFile,
+            url: `uploads/report/cached-redis-report.csv`,
           };
         }
 
@@ -221,15 +245,22 @@ export class FlowLogService {
           },
         });
 
-        const csvFile = await this.generateCsvService.generateCsv(
-          logs,
-          this.redisService,
+        const csvFile = await this.generateCsvService.generateCsv(logs);
+        await this.redisService.set(JSON.stringify(where), csvFile, 3600); //1 hour
+        //make csv in /uploads/report
+        fs.promises.writeFile(
+          path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
+          csvFile,
         );
 
-        await this.redisService.set(JSON.stringify(where), csvFile, 3600); //1 hour
+        setTimeout(() => {
+          fs.promises.unlink(
+            path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
+          );
+        }, 10000);
 
         return {
-          blob: csvFile,
+          url: `uploads/report/fresh-report.csv`,
         };
       }
 

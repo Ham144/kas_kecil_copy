@@ -25,7 +25,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (err?.response?.status === 403 || err?.response?.status === 401) {
           setUserInfo(null);
         } else {
-          console.error("Failed to fetch user:", err);
           setUserInfo(null);
         }
       } finally {
@@ -45,6 +44,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 export function useUserInfo(): {
   userInfo: UserInfo | null;
   loadingUser: boolean;
+  setUserInfo: (userInfo: UserInfo | null) => void;
 } {
   const context = useContext(UserContext);
   if (!context) {

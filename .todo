@@ -17,6 +17,9 @@ setup biaya apa saja: parkir, BBM
 [x] filtering /flow masih belum beres
 [x] revisi, kas kecil(stateless) sumTotalFlowout - sumTotalFlowIn
 [x] filtering flow per hari
+[x] tidak boleh melihat data warehouse lain jika description bukan IT
 [x] export data flow logs
-[] caching download redis
-[] endpoint refresh token perlu  
+[x] caching download redis
+[x] endpoint refresh token perlu
+[] fix: upload attachments
+[] caching hitungan statistic

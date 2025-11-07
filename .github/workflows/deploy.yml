@@ -20,7 +20,14 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            cd /path/to/your/app   # <-- ubah ke direktori project kamu di server
+            cd /home/ham
             git pull origin master
-            npm install --production
+            cd frontend-next
+            pnpm install
+            pnpm run build
+            # backend par 
+            cd ../backend-nest
+            pnpm install
+            pnpm run build
+
             pm2 restart all

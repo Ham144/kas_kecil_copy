@@ -5,7 +5,7 @@ const { Parser } = require('json2csv');
 
 @Injectable()
 export class GenerateCsvService {
-  async generateCsv(logs: any, redisService): Promise<string> {
+  async generateCsv(logs: any): Promise<string> {
     const reportDir = path.join(process.cwd(), 'uploads', 'report');
     if (!fs.existsSync(reportDir)) {
       fs.mkdirSync(reportDir, { recursive: true });

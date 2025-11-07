@@ -30,11 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FlowLogApi } from "@/api/flowLog.api";
 import { GetAnalyticFilter } from "@/types/flowLog";
 import { useUserInfo } from "@/components/UserContext";
-
-export enum ModePeriod {
-  DATE = "date",
-  MONTH = "month",
-}
+import { ModePeriod } from "@/types/flowcategory.type";
 
 export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
@@ -52,7 +48,7 @@ export default function StatsPage() {
       try {
         const res = await FlowLogApi.getAnalytic(filter);
         return res;
-      } catch (error) {
+      } catch (error: any) {
         setIsErrorAnalytic(true);
         console.log(error);
         setErrors((prevErrors) => [...prevErrors, error.response.data.message]);
@@ -200,7 +196,7 @@ export default function StatsPage() {
                       Top Expense Category
                     </p>
                     <p className="mt-2 text-2xl font-bold text-foreground">
-                      {analytic?.topCategories?.[0]?.name || "-"}
+                      {(analytic?.topCategories?.[0] as any)?.name || "-"}
                     </p>
                   </div>
                   <div className="rounded-lg bg-blue-100 p-3">

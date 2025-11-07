@@ -229,10 +229,30 @@ export class UserService {
         process.env.JWT_SECRET_REFRESH,
       );
 
-      const isJtiFound = await this.redis.get(oldPayload.jti);
+      // Cek Redis untuk validasi session
+      // Jika Redis error, log error tapi lanjutkan (fallback untuk development)
+      let isJtiFound: string | null = null;
+      try {
+        isJtiFound = await this.redis.get(oldPayload.jti);
+      } catch (redisError) {
+        this.logger.warn(
+          'Redis connection error during refresh token validation',
+          {
+            error:
+              redisError instanceof Error
+                ? redisError.message
+                : 'Unknown error',
+            jti: oldPayload.jti,
+          },
+        );
+        // Fallback: jika Redis tidak tersedia, tetap lanjutkan validasi token
+        // Ini untuk development, di production sebaiknya Redis harus tersedia
+      }
 
-      if (!isJtiFound)
+      // Jika JTI tidak ditemukan di Redis, session mungkin sudah expired/dicabut
+      if (isJtiFound === null) {
         throw new UnauthorizedException('Session anda telah dicabut (redis)');
+      }
 
       const userDB = await this.prismaService.user.findFirst({
         where: {
@@ -256,12 +276,42 @@ export class UserService {
       const accessToken = await this.generateToken(newPayload, 'access');
       const refreshToken = await this.generateToken(newPayload, 'refresh'); //perbarui juga refresh Token (metode yang dipakai oleh: Google, AWS Cognito, Auth0, Clerk)
 
+      // Update JTI di Redis dengan JTI baru
+      // Hapus JTI lama dan set JTI baru
+      try {
+        await this.redis.del(oldPayload.jti);
+        // Set JTI baru dengan TTL 1 minggu (604800 detik)
+        await this.redis.set(
+          newJti,
+          JSON.stringify({
+            username: userDB.username,
+            refreshedAt: new Date().toISOString(),
+          }),
+          604800, // 1 minggu
+        );
+      } catch (redisError) {
+        this.logger.warn('Redis connection error during JTI update', {
+          error:
+            redisError instanceof Error ? redisError.message : 'Unknown error',
+          oldJti: oldPayload.jti,
+          newJti: newJti,
+        });
+        // Log warning tapi tetap return token (jika Redis tidak tersedia, tetap generate token)
+      }
+
       return {
         access_token: accessToken,
         refresh_token: refreshToken,
       };
     } catch (err) {
-      console.log(err);
+      // Jika sudah UnauthorizedException, throw langsung
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+      // Error lainnya
+      this.logger.error('Refresh token error', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
       throw new UnauthorizedException('Session Anda telah habis, login ulang');
     }
   }

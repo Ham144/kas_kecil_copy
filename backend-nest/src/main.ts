@@ -6,8 +6,6 @@ import { HttpExceptionFilter } from './common/http-exception-filter';
 
 async function bootstrap() {
   try {
-    console.log('Starting NestJS application...');
-
     // Disable built-in body parser to configure custom limits
     const app = await NestFactory.create(AppModule, {
       bodyParser: false,
@@ -54,7 +52,6 @@ async function bootstrap() {
   }
 }
 
-console.log('About to call bootstrap()');
 bootstrap().catch((error) => {
   console.error('Unhandled error in bootstrap:', error);
   process.exit(1);

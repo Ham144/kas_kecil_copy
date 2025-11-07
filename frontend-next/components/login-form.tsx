@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { Lock, User } from "lucide-react";
@@ -14,9 +14,18 @@ export function LoginForm() {
     username: "yafizham",
     password: "Catur2025!",
   });
-  const { userInfo } = useUserInfo();
-
+  const { userInfo, setUserInfo } = useUserInfo();
   if (userInfo) {
+    const redirectCount: number =
+      Number(localStorage.getItem("redirectCount")) || 1;
+    if (Number(redirectCount) > 2) {
+      localStorage.removeItem("redirectCount");
+      setTimeout(() => {
+        setUserInfo(null);
+      }, 2000);
+    }
+
+    localStorage.setItem("redirectCount", (redirectCount + 1).toString());
     redirect("/");
   }
 
@@ -24,6 +33,7 @@ export function LoginForm() {
     mutationKey: ["login"],
     mutationFn: AuthApi.loginUserLdap,
     onSuccess: (data) => {
+      localStorage.removeItem("redirectCount");
       window.location.reload();
     },
     onError: (err: any) => {

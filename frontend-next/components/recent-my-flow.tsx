@@ -38,7 +38,9 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[]; type: FlowLogType }) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-medium text-foreground"></p>
+                    <p className="font-medium text-foreground">
+                      {expense.title}
+                    </p>
                   </div>
                   {expense.category && (
                     <p className="text-xs text-muted-foreground mt-1">

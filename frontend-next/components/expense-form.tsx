@@ -57,8 +57,8 @@ export function ExpenseForm({}: {}) {
       [name]:
         name === "amount"
           ? value === ""
-            ? 0
-            : Number.parseFloat(value)
+            ? "" // biarkan kosong kalau user hapus semua angka
+            : Number(value.replace(/^0+/, "") || "0") // hapus nol depan
           : value,
     }));
   };

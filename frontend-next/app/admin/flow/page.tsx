@@ -2,12 +2,18 @@
 import { useEffect, useState } from "react";
 import {
   Search,
-  Filter,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Download,
+  X,
+  Calendar,
+  User,
+  Building,
+  Tag,
+  CreditCard,
   FileText,
   FileWarningIcon,
+  Download,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Filter,
 } from "lucide-react";
 import { TopNavigation } from "../../../components/top-navigation";
 import { Card } from "@radix-ui/themes";
@@ -19,17 +25,17 @@ import {
   PaginatedFlowLogs,
   RecentFlowLogsFilter,
 } from "@/types/flowLog";
-import { FlowCategoryResponse } from "@/types/flowcategory.type";
+import { FlowCategoryResponse, ModePeriod } from "@/types/flowcategory.type";
 import { FlowLogCategoryApi } from "@/api/category.api";
 import { WarehouseApi } from "@/api/warehouse";
 import { useUserInfo } from "@/components/UserContext";
-import { ModePeriod } from "../stats/page";
 import { toast } from "sonner";
 import { BASE_URL } from "@/lib/constant";
 
 export default function CashFlow() {
   const { userInfo } = useUserInfo();
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
+  const [selectedLog, setSelectedLog] = useState<FlowLog | null>(null);
 
   const initiatFilter: RecentFlowLogsFilter = {
     category: "all",
@@ -76,12 +82,16 @@ export default function CashFlow() {
         return;
       }
       // Normalize URL: remove trailing slash from BASE_URL and leading slash from path
-      const baseUrl = BASE_URL.replace(/\/$/, "");
-      const path = downloadURL.url.startsWith("/")
-        ? downloadURL.url
-        : `/${downloadURL.url}`;
-      const fullUrl = `${baseUrl}${path}`;
-      window.open(fullUrl, "_blank", "nopener,noreferrer");
+      const baseUrl = (BASE_URL || "").replace(/\/+$/, "");
+      const urlPart = (downloadURL?.url || "").replace(/^\/+/, "");
+      const fullUrl = `${baseUrl}/${urlPart}`.trim();
+
+      const newTab = window.open(fullUrl, "_blank", "noopener,noreferrer");
+
+      // tutup otomatis setelah 5 detik sebagai fallback (kalau script server tidak jalan)
+      setTimeout(() => {
+        if (!newTab?.closed) newTab?.close();
+      }, 5000);
     } catch (error) {
       toast.error("Gagal mengunduh file CSV");
     }
@@ -359,6 +369,14 @@ export default function CashFlow() {
                         <tr
                           key={log.id}
                           className="border-b border-border hover:bg-muted/30 transition-colors"
+                          onClick={() => {
+                            setSelectedLog(log);
+                            (
+                              document.getElementById(
+                                "log-modal-detail"
+                              ) as HTMLDialogElement
+                            )?.showModal();
+                          }}
                         >
                           <td className="px-6 py-4 text-sm font-medium text-foreground">
                             {log.title}
@@ -581,6 +599,199 @@ export default function CashFlow() {
           </div>
         </div>
       </main>
+      <dialog id="log-modal-detail" className="modal modal-middle ">
+        <div className="modal-box max-w-2xl p-0 overflow-hidden bg-gradient-to-br from-white to-blue-50 dark:from-gray-900 dark:to-blue-950 border border-blue-200 dark:border-blue-800 shadow-2xl flex-col flex overflow-y-auto">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xl">Detail Transaksi</h3>
+                  <p className="text-blue-100 text-sm">
+                    Informasi lengkap transaksi
+                  </p>
+                </div>
+              </div>
+              <form method="dialog">
+                <button className="btn btn-ghost btn-circle btn-sm text-white hover:bg-white/20 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {/* Title & Amount Section */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-y-auto ">
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">
+                  {selectedLog?.title || "Tidak ada judul"}
+                </h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                  {selectedLog?.note || "Tidak ada catatan"}
+                </p>
+              </div>
+
+              {/* Amount Badge */}
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                  selectedLog?.type === "OUT"
+                    ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
+                    : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"
+                }`}
+              >
+                {selectedLog?.type === "OUT" ? (
+                  <ArrowUpCircle className="w-5 h-5" />
+                ) : (
+                  <ArrowDownCircle className="w-5 h-5" />
+                )}
+                <span className="text-lg font-bold">
+                  {selectedLog?.type === "OUT" ? "-" : "+"}Rp{" "}
+                  {selectedLog?.amount?.toLocaleString("id-ID")}
+                </span>
+              </div>
+            </div>
+
+            {/* Transaction Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Created By */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Dibuat Oleh
+                  </p>
+                  <p className="font-medium text-gray-800 dark:text-white">
+                    {(selectedLog?.createdBy as any)?.username}
+                  </p>
+                </div>
+              </div>
+
+              {/* Warehouse */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <Building className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Gudang
+                  </p>
+                  <p className="font-medium text-gray-800 dark:text-white">
+                    {selectedLog?.warehouse?.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Category */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <Tag className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Kategori
+                  </p>
+                  <p className="font-medium text-gray-800 dark:text-white">
+                    {selectedLog?.category?.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                  <Calendar className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Tanggal
+                  </p>
+                  <p className="font-medium text-gray-800 dark:text-white">
+                    {new Date(selectedLog?.createdAt as any).toLocaleDateString(
+                      "id-ID",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      }
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {selectedLog?.createdAt &&
+                      new Date(selectedLog?.createdAt).toLocaleTimeString(
+                        "id-ID"
+                      )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Attachments Section */}
+            {selectedLog?.attachments &&
+              selectedLog?.attachments?.length > 0 && (
+                <div className="space-y-3 ">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    <h4 className="font-semibold text-gray-800 dark:text-white">
+                      Lampiran
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-col overflow-y-auto ">
+                    {selectedLog?.attachments?.map((attachment, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow flex-col"
+                      >
+                        <img src={attachment} alt={attachment} />
+                        <a
+                          href={attachment}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          title="Download attachment"
+                        >
+                          <Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Transaction ID */}
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                ID Transaksi
+              </p>
+              <p className="text-sm font-mono text-gray-600 dark:text-gray-300 break-all">
+                {selectedLog?.id}
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="modal-action p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            <form method="dialog" className="w-full">
+              <button className="w-full btn btn-outline border-gray-300 hover:border-gray-400 text-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:text-gray-300 rounded-xl">
+                Tutup
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Backdrop */}
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
     </div>
   );
 }

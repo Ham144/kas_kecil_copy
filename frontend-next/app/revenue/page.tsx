@@ -5,7 +5,7 @@ import { TopNavigation } from "../../components/top-navigation";
 import { ExpenseForm } from "../../components/expense-form";
 import { RecentMyFlow } from "../../components/recent-my-flow";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FlowLogType, PaginatedFlowLogs } from "@/types/flowLog";
+import { FlowLog, FlowLogType, PaginatedFlowLogs } from "@/types/flowLog";
 import { FlowLogApi } from "@/api/flowLog.api";
 import { Loader2, AlertCircle } from "lucide-react";
 import { RevenueForm } from "@/components/revenue-form";
@@ -32,7 +32,7 @@ export default function RevenuePage() {
         throw new Error(response.message || "Failed to fetch expenses");
       }
 
-      return response.logs as PaginatedFlowLogs;
+      return response.logs as FlowLog[];
     },
   });
 
@@ -104,7 +104,10 @@ export default function RevenuePage() {
                 ) : isrevenueError ? (
                   <ErrorState error={revenueError} onRetry={refetchRevenue} />
                 ) : (
-                  <RecentMyFlow logs={recentOutflows || []} />
+                  <RecentMyFlow
+                    logs={recentOutflows || []}
+                    type={FlowLogType.IN}
+                  />
                 )}
               </div>
             </div>

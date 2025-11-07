@@ -6,7 +6,7 @@ import * as path from 'path';
 
 @Injectable()
 export class UploadImageLocalService {
-  private readonly uploadDir = path.join(process.cwd(), 'uploads');
+  private readonly uploadDir = path.join('/mnt', 'uploads');
 
   constructor() {
     // Buat folder "uploads" jika belum ada

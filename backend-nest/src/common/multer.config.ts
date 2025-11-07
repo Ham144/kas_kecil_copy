@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const multerConfig = {
   storage: diskStorage({
-    destination: './uploads',
+    destination: './uploads/attachments',
     filename: (req, file, cb) => {
       // Generate unique filename
       const uniqueName = `${uuidv4()}${extname(file.originalname)}`;

@@ -7,6 +7,7 @@ import { FlowLogCategoryModule } from './flow-log-category/flow-log-category.mod
 import { BudgetModule } from './budget/budget.module';
 import { FlowLogModule } from './flow-log/flow-log.module';
 import { HttpExceptionFilter } from './common/http-exception-filter';
+import { ServeStaticModule } from '@nestjs/serve-static';
 
 @Module({
   imports: [
@@ -17,6 +18,13 @@ import { HttpExceptionFilter } from './common/http-exception-filter';
     FlowLogCategoryModule,
     BudgetModule,
     FlowLogModule,
+    ServeStaticModule.forRoot({
+      rootPath: '/mnt/uploads', // path absolut ke file
+      serveRoot: '/uploads', // prefix URL
+      serveStaticOptions: {
+        index: false,
+      },
+    }),
   ],
   controllers: [],
   providers: [HttpExceptionFilter],

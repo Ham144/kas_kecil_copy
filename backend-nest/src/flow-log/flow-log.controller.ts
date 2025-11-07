@@ -13,27 +13,44 @@ import { FlowLogService } from './flow-log.service';
 import { FlowLogCreateDto, GetAnalyticFilter } from 'src/models/flow-log.model';
 import { Auth } from 'src/common/auth.decorator';
 import { multerMemoryConfig } from 'src/common/multer.config';
+import * as fs from 'fs';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
-  constructor(private readonly flowLogService: FlowLogService) {}
+  private readonly uploadDir = path.join('/mnt', 'uploads');
+
+  constructor(private readonly flowLogService: FlowLogService) {
+    // Buat folder upload jika belum ada
+    if (!fs.existsSync(this.uploadDir)) {
+      fs.mkdirSync(this.uploadDir, { recursive: true });
+    }
+  }
 
   @Post('upload')
   @UseInterceptors(FilesInterceptor('files', 5, multerMemoryConfig))
-  async uploadFiles(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Auth() userInfo: any,
-  ) {
+  async uploadFiles(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded');
     }
 
-    const base_url =
-      process.env.NODE_ENV != 'production'
-        ? process.env.BACKEND_URL_DEV
-        : process.env.BACKEND_URL_PROD;
+    // Simpan file dari buffer ke disk
     const urls = await Promise.all(
-      files.map((f) => `${base_url}/uploads/flow-log/${f.filename}`),
+      files.map(async (file) => {
+        // Generate unique filename
+        const ext = path.extname(file.originalname || '');
+        const filename = `${uuidv4()}${ext}`;
+        const filepath = path.join(this.uploadDir, filename);
+        try {
+          await fs.promises.writeFile(filepath, file.buffer);
+          console.log('✅ File saved!');
+        } catch (err) {
+          console.error('❌ Error writing file:', err);
+        }
+        // Return URL
+        return `/mnt/uploads/${filename}`;
+      }),
     );
 
     return {
