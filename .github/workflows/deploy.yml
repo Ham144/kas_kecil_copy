@@ -23,9 +23,10 @@ jobs:
       - name: Deploy and Restart App
         run: |
           echo "🚀 Mulai deploy di self-hosted runner..."
+          export PATH=$PATH:/usr/local/bin:/usr/bin:/usr/local/lib/nodejs/bin:/home/ham/.nvm/versions/node/v20.*/bin
 
-          npm install -g pnpm
-
+          which node || echo "❌ Node not found"
+          which npm || echo "❌ npm not found"
 
           cd /home/ham/kas_kecil_copy || { echo "❌ Folder project tidak ditemukan"; exit 1; }
 
