@@ -14,32 +14,32 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy and Restart App
-          run: |
-            cd /home/ham
+        run: |
+          cd /home/ham
 
-            mkdir -p ~/.ssh
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-            if [ ! -d "kas_kecil_copy" ]; then
-              echo "📦 Folder belum ada, cloning..."
-              git clone git@github.com:Ham144/kas_kecil_copy.git
-            else
-              echo "🔁 Folder sudah ada, pull update..."
-              cd kas_kecil_copy
-              git pull origin master
-              cd ..
-            fi
+          if [ ! -d "kas_kecil_copy" ]; then
+            echo "📦 Folder belum ada, cloning..."
+            git clone git@github.com:Ham144/kas_kecil_copy.git
+          else
+            echo "🔁 Folder sudah ada, pull update..."
+            cd kas_kecil_copy
+            git pull origin master
+            cd ..
+          fi
 
-            npm install -g pnpm pm2
+          npm install -g pnpm pm2
 
-            cd kas_kecil_copy/frontend-next
-            pnpm install
-            pnpm run build
+          cd kas_kecil_copy/frontend-next
+          pnpm install
+          pnpm run build
 
-            cd ../backend-nest
-            pnpm install
-            pnpm run build
+          cd ../backend-nest
+          pnpm install
+          pnpm run build
 
-            pm2 restart all || pm2 start dist/main.js --name backend
+          pm2 restart all || pm2 start dist/main.js --name backend
 
-            pm2 restart all || pm2 start dist/main.js --name frontend
+          pm2 restart all || pm2 start dist/main.js --name frontend
