@@ -9,6 +9,13 @@ jobs:
   deploy:
     runs-on: self-hosted
 
+    # pastikan sudah terinstall di server tujuan :
+    # - nodejs
+    # - npm
+    # - pm2 dan sudah setup
+    # - git
+    # - postgresql
+    # - nginx dan sudah setup
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,8 +36,6 @@ jobs:
             git pull origin master
             cd ..
           fi
-
-          npm install -g pnpm pm2
 
           cd kas_kecil_copy/frontend-next
           pnpm install
