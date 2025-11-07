@@ -1,4 +1,4 @@
-name: Deploy to Production (Ubuntu)
+name: Deploy to Production (Local Ubuntu)
 
 on:
   push:
@@ -7,27 +7,23 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Production via SSH
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          script: |
-            cd /home/ham
-            git pull origin master
-            cd frontend-next
-            pnpm install
-            pnpm run build
-            # backend par 
-            cd ../backend-nest
-            pnpm install
-            pnpm run build
+      - name: Deploy and Restart App
+        run: |
+          cd /home/ham/kas_kecil_copy
+          git pull origin master
 
-            pm2 restart all
+          cd frontend-next
+          pnpm install
+          pnpm run build
+
+          cd ../backend-nest
+          pnpm install
+          pnpm run build
+
+          pm2 restart all
