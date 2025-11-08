@@ -22,15 +22,14 @@ async function bootstrap() {
 
     // Enable cookie parser
     app.use(cookieParser());
-
-    // Serve static files from uploads directory
-    app.use('/uploads/attachments', express.static('uploads'));
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('FRONTEND_URL_PROD:', process.env.FRONTEND_URL_PROD);
 
     // Enable CORS
     app.enableCors({
       origin:
         process.env.NODE_ENV === 'production'
-          ? process.env.FRONTEND_URL_PROD
+          ? [process.env.FRONTEND_URL_PROD]
           : ['http://localhost:3000', 'http://192.168.169.12:3000'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

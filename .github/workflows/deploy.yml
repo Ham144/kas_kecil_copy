@@ -44,7 +44,7 @@ jobs:
 
           echo "🧱 Build frontend..."
           cd frontend-next
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pnpm run build
 
           echo "⚙️ Build backend..."
