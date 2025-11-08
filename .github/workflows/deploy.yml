@@ -16,6 +16,7 @@ jobs:
     # - git
     # - postgresql
     # - nginx dan sudah setup
+    # - redis global
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,6 +55,6 @@ jobs:
           pnpm run build
 
           echo "♻️ Restart PM2..."
-          pm2 restart all || pm2 start dist/main.js --name backend
+          pm2 restart all
 
           echo "✅ Deploy sukses!"
