@@ -1,6 +1,6 @@
 export const refreshTokenOption = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: false,
   sameSite: 'lax' as const,
   // Path '/' agar refresh_token bisa diakses untuk semua request
   // Meskipun kurang optimal secara security, ini diperlukan agar:
@@ -13,7 +13,7 @@ export const refreshTokenOption = {
 
 export const accessTokenOption = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: false,
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 10 * 60 * 1000,

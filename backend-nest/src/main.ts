@@ -24,7 +24,7 @@ async function bootstrap() {
     app.use(cookieParser());
 
     // Serve static files from uploads directory
-    app.use('/uploads', express.static('uploads'));
+    app.use('/uploads/attachments', express.static('uploads'));
 
     // Enable CORS
     app.enableCors({

@@ -19,7 +19,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
-  private readonly uploadDir = path.join('/mnt', 'uploads');
+  private readonly uploadDir = path.join(
+    process.cwd(),
+    'uploads',
+    'attachments',
+  );
+
+  // private readonly uploadDir = path.join('/mnt', 'uploads');
 
   constructor(private readonly flowLogService: FlowLogService) {
     // Buat folder upload jika belum ada
@@ -46,10 +52,10 @@ export class FlowLogController {
           await fs.promises.writeFile(filepath, file.buffer);
           console.log('✅ File saved!');
         } catch (err) {
-          console.error('❌ Error writing file:', err);
+          return new BadRequestException('❌ Error writing file ' + err);
         }
         // Return URL
-        return `/mnt/uploads/${filename}`;
+        return `/uploads/attachments/${filename}`;
       }),
     );
 
