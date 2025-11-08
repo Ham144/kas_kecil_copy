@@ -19,13 +19,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
+  // Konsisten menggunakan process.cwd() untuk semua environment
   private readonly uploadDir = path.join(
     process.cwd(),
     'uploads',
     'attachments',
   );
-
-  // private readonly uploadDir = path.join('/mnt', 'uploads');
 
   constructor(private readonly flowLogService: FlowLogService) {
     // Buat folder upload jika belum ada

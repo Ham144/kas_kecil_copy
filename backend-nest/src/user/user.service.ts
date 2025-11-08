@@ -1,4 +1,10 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { PrismaService } from 'src/common/prisma.service';
 import { ValidationService } from 'src/common/validation.service';
@@ -69,23 +75,15 @@ export class UserService {
       });
       userLDAP = result[0];
     } catch (error) {
-      return {
-        statusCode: 400,
-        message: 'error saat bind LDAP',
-        error: error.message,
-      };
+      throw new BadRequestException({
+        message: 'credential yang anda masukkan salah',
+      });
     }
-
-    if (
-      !userLDAP.description.startsWith('SALES') &&
-      userLDAP.description !== 'OVERDUE' &&
-      userLDAP.description !== 'IT' &&
-      userLDAP.description !== 'PROCUREMENT'
-    ) {
-      return {
-        statusCode: 400,
-        message: 'User tidak diizinkan, description belum didaftarkan',
-      };
+    if (!userLDAP['physicalDeliveryOfficeName']) {
+      throw new BadRequestException({
+        message:
+          'User terkait tidak memiliki warehouse:physicalDeliveryOfficeName',
+      });
     }
     let user = await this.prismaService.user.findFirst({
       where: {

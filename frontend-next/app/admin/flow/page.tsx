@@ -113,6 +113,24 @@ export default function CashFlow() {
     });
   };
 
+  const getAttachmentUrl = (attachmentPath: string) => {
+    if (!attachmentPath) return "";
+    // If already a full URL, return as is
+    if (
+      attachmentPath.startsWith("http://") ||
+      attachmentPath.startsWith("https://")
+    ) {
+      return attachmentPath;
+    }
+    // Normalize BASE_URL: remove trailing slash
+    const baseUrl = (BASE_URL || "").replace(/\/+$/, "");
+    // Normalize path: ensure it starts with /
+    const path = attachmentPath.startsWith("/")
+      ? attachmentPath
+      : `/${attachmentPath}`;
+    return `${baseUrl}${path}`;
+  };
+
   useEffect(() => {
     if (modePeriod == ModePeriod.DATE) {
       setFilter((prevFilter) => ({
@@ -745,23 +763,34 @@ export default function CashFlow() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-col overflow-y-auto ">
-                    {selectedLog?.attachments?.map((attachment, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow flex-col"
-                      >
-                        <img src={attachment} alt={attachment} />
-                        <a
-                          href={attachment}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                          title="Download attachment"
+                    {selectedLog?.attachments?.map((attachment, index) => {
+                      const attachmentUrl = getAttachmentUrl(attachment);
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow flex-col"
                         >
-                          <Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                        </a>
-                      </div>
-                    ))}
+                          <img
+                            src={attachmentUrl}
+                            alt={`Attachment ${index + 1}`}
+                            className="max-w-full h-auto rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                            }}
+                          />
+                          <a
+                            href={attachmentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            title="Download attachment"
+                          >
+                            <Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                          </a>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

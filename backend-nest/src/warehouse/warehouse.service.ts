@@ -12,7 +12,7 @@ import {
 import { PrismaService } from 'src/common/prisma.service';
 import { ValidationService } from 'src/common/validation.service';
 import { User } from '@prisma/client';
-import { ErrorResponse, SimpleSuccess } from 'src/models/error.model';
+import { SimpleSuccess } from 'src/models/error.model';
 
 @Injectable()
 export class WarehouseService {
@@ -149,17 +149,21 @@ export class WarehouseService {
   ): Promise<WarehouseResponseDto[]> {
     const isSuperAdmin = userInfo?.description === 'IT';
 
-    // Bentuk where dasar
-    const where: any = {
-      ...(searchKey && {
-        name: {
-          contains: searchKey,
-          mode: 'insensitive',
-        },
-      }),
-    };
+    let where: any = {};
 
-    // Jika bukan superadmin, tambahkan filter member
+    if (isSuperAdmin) {
+      // Bentuk where dasar
+      where = {
+        ...(searchKey && {
+          name: {
+            contains: searchKey,
+            mode: 'insensitive',
+          },
+        }),
+      };
+    }
+
+    // Jika bukan superadmin, tampilkan hanya warehouse miliknya
     if (!isSuperAdmin) {
       where.members = {
         some: {

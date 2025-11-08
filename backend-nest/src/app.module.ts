@@ -8,6 +8,7 @@ import { BudgetModule } from './budget/budget.module';
 import { FlowLogModule } from './flow-log/flow-log.module';
 import { HttpExceptionFilter } from './common/http-exception-filter';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import * as path from 'path';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
     BudgetModule,
     FlowLogModule,
     ServeStaticModule.forRoot({
-      rootPath: '/mnt/uploads', // path absolut ke file
+      rootPath: path.join(process.cwd(), 'uploads'), // Konsisten menggunakan process.cwd()
       serveRoot: '/uploads', // prefix URL
       serveStaticOptions: {
         index: false,

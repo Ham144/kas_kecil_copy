@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { Lock, User } from "lucide-react";
@@ -11,8 +11,8 @@ import { useUserInfo } from "./UserContext";
 
 export function LoginForm() {
   const [formData, setFormData] = useState({
-    username: "yafizham",
-    password: "Catur2025!",
+    username: "",
+    password: "",
   });
   const { userInfo, setUserInfo } = useUserInfo();
   if (userInfo) {
@@ -37,11 +37,7 @@ export function LoginForm() {
       window.location.reload();
     },
     onError: (err: any) => {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Gagal login. Periksa kembali username dan password Anda.";
-      toast.error(errorMessage);
+      toast.error(err?.response?.data?.message);
     },
   });
 

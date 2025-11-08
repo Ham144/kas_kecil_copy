@@ -20,6 +20,7 @@ setup biaya apa saja: parkir, BBM
 [x] tidak boleh melihat data warehouse lain jika description bukan IT
 [x] export data flow logs
 [x] caching download redis
-[x] endpoint refresh token perlu
-[] fix: upload attachments
+[x] endpoint refresh token perlu perbaikan
+[x] fix: upload attachments
 [] caching hitungan statistic
+[tunda] ganti alamat db postgresql 

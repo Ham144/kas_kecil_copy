@@ -13,7 +13,6 @@ export const AuthApi = {
       "/api/user/login/ldap",
       credentials
     );
-
     return response.data;
   },
 
