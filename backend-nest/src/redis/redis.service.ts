@@ -1,10 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService {
   private client: Redis;
-  private readonly logger = new Logger(RedisService.name);
   private isConnected = false;
 
   constructor() {
@@ -23,27 +22,22 @@ export class RedisService {
     // Handle connection events
     this.client.on('connect', () => {
       this.isConnected = true;
-      this.logger.log('Redis connected');
     });
 
     this.client.on('ready', () => {
       this.isConnected = true;
-      this.logger.log('Redis ready');
     });
 
-    this.client.on('error', (err) => {
+    this.client.on('error', () => {
       this.isConnected = false;
-      this.logger.error('Redis connection error', err.message);
     });
 
     this.client.on('close', () => {
       this.isConnected = false;
-      this.logger.warn('Redis connection closed');
     });
 
     // Try to connect
-    this.client.connect().catch((err) => {
-      this.logger.warn('Failed to connect to Redis on startup', err.message);
+    this.client.connect().catch(() => {
       this.isConnected = false;
     });
   }
@@ -55,10 +49,6 @@ export class RedisService {
       }
       await this.client.set(key, value, 'EX', ttlSeconds);
     } catch (error) {
-      this.logger.warn(
-        `Redis set error for key ${key}`,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
       throw error;
     }
   }
@@ -70,10 +60,6 @@ export class RedisService {
       }
       return await this.client.get(key);
     } catch (error) {
-      this.logger.warn(
-        `Redis get error for key ${key}`,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
       return null; // Return null jika error, bukan throw
     }
   }
@@ -85,11 +71,7 @@ export class RedisService {
       }
       await this.client.del(key);
     } catch (error) {
-      this.logger.warn(
-        `Redis del error for key ${key}`,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-      // Don't throw, just log
+      // Don't throw
     }
   }
 }

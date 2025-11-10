@@ -19,8 +19,9 @@ setup biaya apa saja: parkir, BBM
 [x] filtering flow per hari
 [x] tidak boleh melihat data warehouse lain jika description bukan IT
 [x] export data flow logs
-[x] caching download redis
+[x] caching redis download 
 [x] endpoint refresh token perlu perbaikan
 [x] fix: upload attachments
-[] caching hitungan statistic
-[tunda] ganti alamat db postgresql 
+[x] add: caching redis hitungan statistic
+[x] single warehouse setup berdasar description
+[x] ganti alamat db postgresql

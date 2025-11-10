@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import * as cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/http-exception-filter';
 
@@ -11,8 +10,6 @@ async function bootstrap() {
       bodyParser: false,
     });
 
-    const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
-    app.useLogger(logger);
     app.useGlobalFilters(new HttpExceptionFilter());
 
     // Configure body parser with increased limit (15MB)
@@ -38,9 +35,6 @@ async function bootstrap() {
 
     await app.listen(3001);
     console.log('✓ Server listening on port 3001');
-    logger.log(
-      'Backend with nestjs, database with postgresql and redis is running on port 3001',
-    );
   } catch (error) {
     console.error('✗ Failed to start server:', error);
     console.error(

@@ -1,14 +1,11 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { PrismaService } from 'src/common/prisma.service';
 import { ValidationService } from 'src/common/validation.service';
-import { Logger } from 'winston';
 import { LoginRequestLdapDto, LoginResponseDto } from 'src/models/user.model';
 import { UserValidation } from './user.validation';
 import * as LdapClient from 'ldapjs-client';
@@ -22,7 +19,6 @@ import { randomUUID } from 'crypto';
 export class UserService {
   constructor(
     private validationService: ValidationService,
-    @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
     private prismaService: PrismaService,
     private redis: RedisService,
   ) {}
@@ -188,12 +184,6 @@ export class UserService {
     const refresh_token = this.generateToken(payload, 'refresh');
 
     if (!access_token || !refresh_token) {
-      this.logger.error('Failed to generate tokens', {
-        access_token: !!access_token,
-        refresh_token: !!refresh_token,
-        hasJWTSecret: !!process.env.JWT_SECRET,
-        hasJWTSecretRefresh: !!process.env.JWT_SECRET_REFRESH,
-      });
       throw new Error('Failed to generate authentication tokens');
     }
 
@@ -228,21 +218,11 @@ export class UserService {
       );
 
       // Cek Redis untuk validasi session
-      // Jika Redis error, log error tapi lanjutkan (fallback untuk development)
+      // Jika Redis error, lanjutkan (fallback untuk development)
       let isJtiFound: string | null = null;
       try {
         isJtiFound = await this.redis.get(oldPayload.jti);
       } catch (redisError) {
-        this.logger.warn(
-          'Redis connection error during refresh token validation',
-          {
-            error:
-              redisError instanceof Error
-                ? redisError.message
-                : 'Unknown error',
-            jti: oldPayload.jti,
-          },
-        );
         // Fallback: jika Redis tidak tersedia, tetap lanjutkan validasi token
         // Ini untuk development, di production sebaiknya Redis harus tersedia
       }
@@ -288,13 +268,7 @@ export class UserService {
           604800, // 1 minggu
         );
       } catch (redisError) {
-        this.logger.warn('Redis connection error during JTI update', {
-          error:
-            redisError instanceof Error ? redisError.message : 'Unknown error',
-          oldJti: oldPayload.jti,
-          newJti: newJti,
-        });
-        // Log warning tapi tetap return token (jika Redis tidak tersedia, tetap generate token)
+        // Jika Redis tidak tersedia, tetap generate token
       }
 
       return {
@@ -307,9 +281,6 @@ export class UserService {
         throw err;
       }
       // Error lainnya
-      this.logger.error('Refresh token error', {
-        error: err instanceof Error ? err.message : 'Unknown error',
-      });
       throw new UnauthorizedException('Session Anda telah habis, login ulang');
     }
   }
@@ -382,12 +353,10 @@ export class UserService {
           : process.env.JWT_SECRET_REFRESH;
       const expiresIn = type === 'access' ? '10m' : '7d';
       if (!secret) {
-        this.logger.error(`JWT secret for ${type} token is not defined!`);
         return null;
       }
       return jwt.sign(payload, secret, { expiresIn });
     } catch (error) {
-      this.logger.error(`Error generating ${type} token:`, error);
       return null;
     }
   }

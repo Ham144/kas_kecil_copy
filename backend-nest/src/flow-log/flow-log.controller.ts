@@ -16,6 +16,7 @@ import { multerMemoryConfig } from 'src/common/multer.config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { RedisService } from 'src/redis/redis.service';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
@@ -26,7 +27,10 @@ export class FlowLogController {
     'attachments',
   );
 
-  constructor(private readonly flowLogService: FlowLogService) {
+  constructor(
+    private readonly flowLogService: FlowLogService,
+    private readonly redisService: RedisService,
+  ) {
     // Buat folder upload jika belum ada
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
@@ -69,6 +73,17 @@ export class FlowLogController {
     @Body() createFlowLogDto: FlowLogCreateDto,
     @Auth() userInfo: any,
   ) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    const cacheKeyMonth = `analytic:${userInfo.warehouseId}:${year}-${month}`;
+    const cacheKeyDay = `analytic:${userInfo.warehouseId}:${year}-${month}-${day}`;
+
+    await this.redisService.del(cacheKeyMonth);
+    await this.redisService.del(cacheKeyDay);
+
     const result = await this.flowLogService.createExpense(
       createFlowLogDto,
       userInfo,
@@ -90,6 +105,19 @@ export class FlowLogController {
     @Body() createFlowLogDto: FlowLogCreateDto,
     @Auth() userInfo: any,
   ) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    const cacheKeyMonth = `analytic:${userInfo.warehouseId}:${year}-${month}`;
+    const cacheKeyDay = `analytic:${userInfo.warehouseId}:${year}-${month}-${day}`;
+
+    console.log(cacheKeyDay, cacheKeyMonth);
+
+    await this.redisService.del(cacheKeyMonth);
+    await this.redisService.del(cacheKeyDay);
+
     const result = await this.flowLogService.createRevenue(
       createFlowLogDto,
       userInfo,
@@ -127,7 +155,24 @@ export class FlowLogController {
     @Auth() userInfo: any,
   ) {
     //cek redis first
+    const cacheKey = `analytic:${filter.selectedWarehouseId}:${filter.selectedDate}`;
 
-    return await this.flowLogService.getAnalytics(userInfo, filter);
+    const cachedResult = await this.redisService.get(cacheKey);
+    if (cachedResult) {
+      const data = JSON.parse(cachedResult);
+      data.success = true;
+      data.message = 'from cahched analytic';
+      return data;
+    }
+
+    const data = await this.flowLogService.getAnalytics(userInfo, filter);
+
+    // Check if result is an error response
+    await this.redisService.set(
+      cacheKey,
+      JSON.stringify(data),
+      24 * 60 * 60000, // 24 jam dalam milidetik
+    );
+    return data;
   }
 }

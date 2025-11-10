@@ -4,7 +4,6 @@ import {
   ArrowRight,
   PlusIcon,
   MinusCircle,
-  FileText,
   Download,
   Settings,
   HelpCircle,
