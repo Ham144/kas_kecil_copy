@@ -100,16 +100,21 @@ export class UserService {
         user.warehouse.name
       ) {
         //rumah baru - upsert warehouse dulu
-        const newWarehouse = await this.prismaService.warehouse.upsert({
+        let newWarehouse = await this.prismaService.warehouse.upsert({
           where: {
             name: String(userLDAP['physicalDeliveryOfficeName']).toUpperCase(),
           },
-          update: {},
+          update: {
+            members: {
+              connect: {
+                username: body.username,
+              },
+            },
+          },
           create: {
             name: String(userLDAP['physicalDeliveryOfficeName']).toUpperCase(),
           },
         });
-
         warehouseId = newWarehouse.id;
       }
 

@@ -6,8 +6,8 @@ export function middleware(req: NextRequest) {
   const refreshToken = req.cookies.get("refresh_token")?.value;
   const pathname = req.nextUrl.pathname;
 
-  const wl_IT_only = ["/admin", "/setup", "/warehouse"];
-  const kasir_IT_only = ["/"];
+  const admin_only = ["/", "/admin", "/setup", "/warehouse"];
+  const kasir_only = ["/"];
 
   // Jika di halaman login, biarkan lewat (tidak perlu check token)
   if (pathname === "/login") {
@@ -50,14 +50,14 @@ export function middleware(req: NextRequest) {
       return NextResponse.next();
     }
 
-    if (description?.includes("WL")) {
-      if (wl_IT_only.includes(pathname)) {
+    if (description?.includes("ADMIN")) {
+      if (admin_only.includes(pathname)) {
         return NextResponse.next();
       }
     }
 
     if (description?.includes("KASIR")) {
-      if (kasir_IT_only.includes(pathname)) {
+      if (kasir_only.includes(pathname)) {
         return NextResponse.next();
       }
     }

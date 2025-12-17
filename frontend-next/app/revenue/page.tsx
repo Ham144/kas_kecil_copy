@@ -2,17 +2,14 @@
 
 import { useCallback } from "react";
 import { TopNavigation } from "../../components/top-navigation";
-import { ExpenseForm } from "../../components/expense-form";
 import { RecentMyFlow } from "../../components/recent-my-flow";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FlowLog, FlowLogType, PaginatedFlowLogs } from "@/types/flowLog";
+import { useQuery } from "@tanstack/react-query";
+import { FlowLog, FlowLogType } from "@/types/flowLog";
 import { FlowLogApi } from "@/api/flowLog.api";
 import { Loader2, AlertCircle } from "lucide-react";
 import { RevenueForm } from "@/components/revenue-form";
 
 export default function RevenuePage() {
-  const queryClient = useQueryClient();
-
   // Fetch recent revenue with proper error handling and loading states
   const {
     data: recentOutflows,
