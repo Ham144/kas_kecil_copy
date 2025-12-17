@@ -19,7 +19,7 @@ export interface UserInfo {
   displayName?: string;
   warehouse: Warehouse;
   warehouseId?: string;
-  role?: Role; // user.warehouse.name.includes('WL') is KASIR
+  role?: string; // user.warehouse.name.includes('WL') is KASIR
   isActive?: boolean;
   // Tambahkan field lain sesuai kebutuhan
 }

@@ -14,6 +14,16 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   Filter,
+  Hash,
+  Clock,
+  CheckCircle,
+  Receipt,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  ImageIcon,
+  ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 import { TopNavigation } from "../../../components/top-navigation";
 import { Card } from "@radix-ui/themes";
@@ -31,11 +41,13 @@ import { WarehouseApi } from "@/api/warehouse";
 import { useUserInfo } from "@/components/UserContext";
 import { toast } from "sonner";
 import { BASE_URL } from "@/lib/constant";
+import { formatDateTime } from "@/lib/formatDate";
 
 export default function CashFlow() {
   const { userInfo } = useUserInfo();
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
   const [selectedLog, setSelectedLog] = useState<FlowLog | null>(null);
+  const isIncome = selectedLog?.type === FlowLogType.IN;
 
   const initiatFilter: RecentFlowLogsFilter = {
     category: "all",
@@ -383,51 +395,53 @@ export default function CashFlow() {
                     ) : (
                       flows?.logs &&
                       flows?.logs.length > 0 &&
-                      flows?.logs.map((log: FlowLog) => (
-                        <tr
-                          key={log.id}
-                          className="border-b border-border hover:bg-muted/30 transition-colors"
-                          onClick={() => {
-                            setSelectedLog(log);
-                            (
-                              document.getElementById(
-                                "log-modal-detail"
-                              ) as HTMLDialogElement
-                            )?.showModal();
-                          }}
-                        >
-                          <td className="px-6 py-4 text-sm font-medium text-foreground">
-                            {log.title}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-foreground">
-                            {log.category?.name}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-foreground">
-                            {log.warehouse?.name}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-primary">
-                            {formatCurrency(log.amount)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-muted-foreground">
-                            {formatDate(log.createdAt as string)}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-                                log.type === FlowLogType.IN
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {log.type == FlowLogType.IN ? (
-                                <ArrowUpCircle />
-                              ) : (
-                                <ArrowDownCircle />
-                              )}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                      flows?.logs.map((log: FlowLog) => {
+                        return (
+                          <tr
+                            key={log.id}
+                            className="border-b cursor-pointer   border-border hover:bg-muted/30 transition-colors"
+                            onClick={() => {
+                              setSelectedLog(log);
+                              (
+                                document.getElementById(
+                                  "log-modal-detail"
+                                ) as HTMLDialogElement
+                              )?.showModal();
+                            }}
+                          >
+                            <td className="px-6 py-4 text-sm font-medium text-foreground">
+                              {log.title}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-foreground">
+                              {log.category?.name}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-foreground">
+                              {log.warehouse?.name}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-semibold text-primary">
+                              {formatCurrency(log.amount)}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">
+                              {formatDate(log.createdAt as string)}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                                  log.type === FlowLogType.IN
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {log.type == FlowLogType.IN ? (
+                                  <ArrowUpCircle />
+                                ) : (
+                                  <ArrowDownCircle />
+                                )}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -617,202 +631,380 @@ export default function CashFlow() {
           </div>
         </div>
       </main>
-      <dialog id="log-modal-detail" className="modal modal-middle ">
-        <div className="modal-box max-w-2xl p-0 overflow-hidden bg-gradient-to-br from-white to-blue-50   border border-blue-200 dark:border-blue-800 shadow-2xl flex-col flex overflow-y-auto">
+      {/* // dialog modal */}
+      <dialog id="log-modal-detail" className="modal modal-middle">
+        <div className="modal-box max-w-4xl p-0 overflow-hidden bg-white border border-gray-200 shadow-2xl ">
           {/* Header */}
-          <div className="bg-gradient-to-r bg-primary p-6 text-white">
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 text-white">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <CreditCard className="w-6 h-6" />
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/10 rounded-xl">
+                  <Receipt className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl">Detail Transaksi</h3>
-                  <p className="text-blue-100 text-sm">
-                    Informasi lengkap transaksi
+                  <h3 className="font-bold text-2xl">
+                    Detail Transaksi Finansial
+                  </h3>
+                  <p className="text-gray-300 text-sm mt-1">
+                    Informasi lengkap transaksi keuangan
                   </p>
                 </div>
               </div>
               <form method="dialog">
                 <button className="btn btn-ghost btn-circle btn-sm text-white hover:bg-white/20 transition-colors">
-                  <X className="w-5 h-5" />
+                  <X className="w-6 h-6" />
                 </button>
               </form>
             </div>
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 max-h-[90vh] overflow-y-auto pb-36">
             {/* Title & Amount Section */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-y-auto ">
-              <div className="flex-1">
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">
-                  {selectedLog?.title || "Tidak ada judul"}
-                </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                  {selectedLog?.note || "Tidak ada catatan"}
-                </p>
-              </div>
+            <div className="bg-gradient-to-r from-gray-50 to-white p-6 rounded-2xl border border-gray-200">
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div
+                      className={`p-2 rounded-lg ${
+                        isIncome
+                          ? "bg-green-100 text-green-600"
+                          : "bg-red-100 text-red-600"
+                      }`}
+                    >
+                      {isIncome ? (
+                        <TrendingDown className="w-6 h-6" />
+                      ) : (
+                        <TrendingUp className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-bold text-gray-900">
+                        {selectedLog?.title || "Tidak ada judul"}
+                      </h4>
+                      <div
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium mt-2 ${
+                          isIncome
+                            ? "bg-green-100 text-green-800 border border-green-200"
+                            : "bg-red-100 text-red-800 border border-red-200"
+                        }`}
+                      >
+                        {isIncome ? (
+                          <>
+                            <TrendingDown className="w-3.5 h-3.5" />
+                            PENDAPATAN
+                          </>
+                        ) : (
+                          <>
+                            <TrendingUp className="w-3.5 h-3.5" />
+                            PENGELUARAN
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Amount Badge */}
-              <div
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                  selectedLog?.type === "OUT"
-                    ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
-                    : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"
-                }`}
-              >
-                {selectedLog?.type === "OUT" ? (
-                  <ArrowUpCircle className="w-5 h-5" />
-                ) : (
-                  <ArrowDownCircle className="w-5 h-5" />
-                )}
-                <span className="text-lg font-bold">
-                  {selectedLog?.type === "OUT" ? "-" : "+"}Rp{" "}
-                  {selectedLog?.amount?.toLocaleString("id-ID")}
-                </span>
+                  {selectedLog?.note && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-start gap-3">
+                        <FileText className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            Catatan:
+                          </p>
+                          <p className="text-gray-800">{selectedLog.note}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Amount Card */}
+                <div
+                  className={`lg:w-64 p-5 rounded-xl border-2 ${
+                    isIncome
+                      ? "border-green-200 bg-gradient-to-br from-green-50 to-white"
+                      : "border-red-200 bg-gradient-to-br from-red-50 to-white"
+                  }`}
+                >
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Jumlah Transaksi
+                    </p>
+                    <div
+                      className={`text-3xl font-bold ${
+                        isIncome ? "text-green-700" : "text-red-700"
+                      }`}
+                    >
+                      {isIncome ? "+" : "-"}{" "}
+                      {formatCurrency(selectedLog?.amount || 0)}
+                    </div>
+                    <div className="mt-3 text-xs text-gray-500">
+                      <DollarSign className="w-4 h-4 inline mr-1" />
+                      Transaksi {isIncome ? "masuk" : "keluar"}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Transaction Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Created By */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Dibuat Oleh
-                  </p>
-                  <p className="font-medium text-gray-800 dark:text-white">
-                    {(selectedLog?.createdBy as any)?.username}
-                  </p>
+              <div className="bg-white p-5 rounded-xl border border-gray-200 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-100 rounded-xl">
+                    <User className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500 mb-1">Dibuat Oleh</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedLog?.createdBy?.displayName ||
+                        selectedLog?.createdBy.username}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      @
+                      {selectedLog?.createdBy?.username ||
+                        selectedLog?.createdBy.username}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Warehouse */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <Building className="w-4 h-4 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Gudang
-                  </p>
-                  <p className="font-medium text-gray-800 dark:text-white">
-                    {selectedLog?.warehouse?.name}
-                  </p>
+              <div className="bg-white p-5 rounded-xl border border-gray-200 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-100 rounded-xl">
+                    <Building className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500 mb-1">Gudang</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedLog?.warehouse?.name || "-"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Category */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Tag className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Kategori
-                  </p>
-                  <p className="font-medium text-gray-800 dark:text-white">
-                    {selectedLog?.category?.name}
-                  </p>
+              <div className="bg-white p-5 rounded-xl border border-gray-200 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-100 rounded-xl">
+                    <Tag className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500 mb-1">Kategori</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedLog?.category?.name || "-"}
+                    </p>
+                    <div className="mt-2">
+                      <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                        {isIncome ? "Pemasukan" : "Pengeluaran"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Date */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                  <Calendar className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Tanggal
-                  </p>
-                  <p className="font-medium text-gray-800 dark:text-white">
-                    {new Date(selectedLog?.createdAt as any).toLocaleDateString(
-                      "id-ID",
-                      {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {selectedLog?.createdAt &&
-                      new Date(selectedLog?.createdAt).toLocaleTimeString(
-                        "id-ID"
-                      )}
-                  </p>
+              {/* Date & Time */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-orange-100 rounded-xl">
+                    <Calendar className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500 mb-1">
+                      Tanggal Transaksi
+                    </p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedLog?.date
+                        ? formatDate(selectedLog.date as unknown as string)
+                        : "-"}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {formatDateTime(selectedLog?.createdAt)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-4 h-4" />
+                        Dibuat: {formatDate(selectedLog?.createdAt)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Attachments Section */}
-            {selectedLog?.attachments &&
-              selectedLog?.attachments?.length > 0 && (
-                <div className="space-y-3 ">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    <h4 className="font-semibold text-gray-800 dark:text-white">
-                      Lampiran
-                    </h4>
+            {selectedLog?.attachments && selectedLog.attachments.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="p-5 border-b border-gray-200 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <ImageIcon className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">
+                          Bukti Transaksi
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          {selectedLog.attachments.length} file lampiran
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Klik untuk memperbesar
+                    </div>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-col overflow-y-auto ">
-                    {selectedLog?.attachments?.map((attachment, index) => {
+                <div className="p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {selectedLog.attachments.map((attachment, index) => {
                       const attachmentUrl = getAttachmentUrl(attachment);
+                      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(
+                        attachment
+                      );
+
                       return (
                         <div
                           key={index}
-                          className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow flex-col"
+                          className="group relative overflow-hidden rounded-xl border border-gray-300 hover:border-gray-400 transition-all duration-300"
                         >
-                          <img
-                            src={attachmentUrl}
-                            alt={`Attachment ${index + 1}`}
-                            className="max-w-full h-auto rounded-lg"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={attachmentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                            title="Download attachment"
-                          >
-                            <Download className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </a>
+                          {/* Image Preview */}
+                          {isImage ? (
+                            <div className="aspect-square overflow-hidden bg-gray-100">
+                              <img
+                                src={attachmentUrl}
+                                alt={`Bukti transaksi ${index + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                              />
+                            </div>
+                          ) : (
+                            <div className="aspect-square flex items-center justify-center bg-gray-50">
+                              <FileText className="w-12 h-12 text-gray-400" />
+                            </div>
+                          )}
+
+                          {/* Overlay Actions */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div className="flex gap-2">
+                              <a
+                                href={attachmentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                                title="Lihat full size"
+                              >
+                                <ExternalLink className="w-5 h-5 text-gray-700" />
+                              </a>
+                              <a
+                                href={attachmentUrl}
+                                download
+                                className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                                title="Download file"
+                              >
+                                <Download className="w-5 h-5 text-gray-700" />
+                              </a>
+                            </div>
+                          </div>
+
+                          {/* File Info */}
+                          <div className="p-3 bg-white border-t border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700 truncate">
+                                Bukti {index + 1}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {attachment.split("/").pop()?.substring(0, 10)}
+                                ...
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-            {/* Transaction ID */}
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                ID Transaksi
-              </p>
-              <p className="text-sm font-mono text-gray-600 dark:text-gray-300 break-all">
-                {selectedLog?.id}
-              </p>
+            {/* Transaction Metadata */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Transaction ID */}
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <Hash className="w-5 h-5 text-gray-600" />
+                  <h5 className="font-semibold text-gray-800">ID Transaksi</h5>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-gray-300">
+                  <code className="text-sm text-gray-700 break-all font-mono">
+                    {selectedLog?.id}
+                  </code>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Gunakan ID ini untuk referensi administrasi
+                </p>
+              </div>
+
+              {/* Transaction Summary */}
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <AlertCircle className="w-5 h-5 text-gray-600" />
+                  <h5 className="font-semibold text-gray-800">Ringkasan</h5>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm text-gray-600">Status</span>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                        isIncome
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {isIncome ? "✓ Selesai" : "✓ Tercatat"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-sm text-gray-600">Tipe</span>
+                    <span className="font-medium text-gray-900">
+                      {isIncome ? "Pemasukan" : "Pengeluaran"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Tanggal Input</span>
+                    <span className="font-medium text-gray-900">
+                      {selectedLog?.createdAt
+                        ? formatDate(selectedLog.createdAt as string)
+                        : "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="modal-action p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-            <form method="dialog" className="w-full">
-              <button className="w-full btn btn-outline border-gray-300 hover:border-gray-400 text-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:text-gray-300 rounded-xl">
-                Tutup
-              </button>
-            </form>
+          <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Transaksi ini dicatat pada sistem keuangan gudang
+              </div>
+              <div className="flex gap-3">
+                <form method="dialog">
+                  <button className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium">
+                    Tutup
+                  </button>
+                </form>
+                <button className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors font-medium">
+                  Cetak Laporan
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

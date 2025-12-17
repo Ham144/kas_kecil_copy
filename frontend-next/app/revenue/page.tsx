@@ -71,7 +71,7 @@ export default function RevenuePage() {
   return (
     <div className="min-h-screen bg-background">
       <TopNavigation />
-      <main className="grid grid-cols-2 mx-auto gap-3 container p-5">
+      <main className="grid lg:grid-cols-2 grid-cols-1 mx-auto gap-3 container p-5">
         {/* Expense Form */}
         <div className="lg:col-span-1">
           <div className="bg-card rounded-lg border p-6">

@@ -14,6 +14,7 @@ import { FlowCategoryResponse } from "@/types/flowcategory.type";
 import { useRouter } from "next/navigation";
 import { WarehouseApi } from "@/api/warehouse";
 import { Role } from "@/types/role.type";
+import { Warehouse } from "@/types/warehouse";
 
 export function RevenueForm({}: {}) {
   const { userInfo } = useUserInfo();

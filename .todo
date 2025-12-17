@@ -26,7 +26,7 @@ setup biaya apa saja: parkir, BBM
 [x] single warehouse setup berdasar description
 [x] ganti alamat db postgresql
 
-[x] add: role ["ADMIN", "KASIR", "IT"] (edit di /accounts) 
+[x] add: role ["ADMIN", "KASIR", "IT"] (bisa edit di /accounts) 
 [x] add: field date untuk revenue & expense
 [x] add: filtering recent flow untuk "KASIR"
 [x] mod: perbaiki tampilan recent flow

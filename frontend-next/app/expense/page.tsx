@@ -33,11 +33,6 @@ export default function ExpensePage() {
     },
   });
 
-  // Handle refresh action
-  const handleRefresh = useCallback(() => {
-    refetchExpenses();
-  }, [refetchExpenses]);
-
   // Loading state component
   const LoadingState = () => (
     <div className="flex items-center justify-center p-8">
@@ -77,9 +72,9 @@ export default function ExpensePage() {
   return (
     <div className="min-h-screen bg-background">
       <TopNavigation />
-      <main className="grid grid-cols-2 mx-auto gap-3 container p-5">
+      <main className="grid lg:grid-cols-2 col-span-1 mx-auto gap-3 container p-5">
         {/* Expense Form */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 ">
           <div className="bg-card rounded-lg border p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold tracking-tight">Add Expense</h2>

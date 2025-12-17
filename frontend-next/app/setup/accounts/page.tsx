@@ -203,9 +203,10 @@ export default function AccountsPage() {
                 <select
                   value={onEditingAccount?.role || ""}
                   onChange={(e) => {
-                    setOnEditingAccount((prev) =>
-                      prev ? { ...prev, role: e.target.value } : undefined
-                    );
+                    setOnEditingAccount((prev) => ({
+                      ...prev,
+                      role: e.target.value,
+                    }));
                   }}
                   className="select w-full"
                 >
