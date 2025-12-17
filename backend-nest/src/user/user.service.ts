@@ -14,6 +14,7 @@ import * as jwt from 'jsonwebtoken';
 import { TokenPayload } from 'src/models/tokenPayload.model';
 import { RedisService } from 'src/redis/redis.service';
 import { randomUUID } from 'crypto';
+import { ROLE, User } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -81,6 +82,7 @@ export class UserService {
           'User terkait tidak memiliki warehouse:physicalDeliveryOfficeName',
       });
     }
+
     let user = await this.prismaService.user.findFirst({
       where: {
         username: body.username,
@@ -90,19 +92,20 @@ export class UserService {
       },
     });
 
+    const warehouseName = String(
+      userLDAP['physicalDeliveryOfficeName'],
+    ).toUpperCase();
+
     //jika user sebelumnya memiliki description yg berbeda dengan ldap :ganti
     if (user) {
       //bagian pemeriksaan field yg berubah
       let warehouseId = user.warehouseId;
 
-      if (
-        String(userLDAP['physicalDeliveryOfficeName']).toUpperCase() !==
-        user.warehouse.name
-      ) {
+      if (warehouseName !== user.warehouse.name) {
         //rumah baru - upsert warehouse dulu
         let newWarehouse = await this.prismaService.warehouse.upsert({
           where: {
-            name: String(userLDAP['physicalDeliveryOfficeName']).toUpperCase(),
+            name: warehouseName,
           },
           update: {
             members: {
@@ -112,7 +115,7 @@ export class UserService {
             },
           },
           create: {
-            name: String(userLDAP['physicalDeliveryOfficeName']).toUpperCase(),
+            name: warehouseName,
           },
         });
         warehouseId = newWarehouse.id;
@@ -135,14 +138,21 @@ export class UserService {
       const transactionResult = await this.prismaService.$transaction(
         async (tx) => {
           const warehouse = await tx.warehouse.upsert({
-            where: { name: userLDAP['physicalDeliveryOfficeName'] },
+            where: { name: warehouseName },
             update: {},
             create: {
-              name: String(
-                userLDAP['physicalDeliveryOfficeName'],
-              ).toUpperCase(),
+              name: warehouseName,
             },
           });
+
+          //determine role
+          let role: ROLE = 'ADMIN';
+          if (warehouseName.toUpperCase().includes('WL')) {
+            role = 'KASIR';
+          }
+          if (userLDAP['description'] == 'IT') {
+            role = 'IT';
+          }
 
           const createdUser = await tx.user.upsert({
             where: { username: body.username },
@@ -151,6 +161,7 @@ export class UserService {
               username: body.username,
               description: userLDAP['description'],
               warehouseId: warehouse.id,
+              role: role,
               displayName:
                 userLDAP['displayName'] || userLDAP['name'] || body.username,
             },
@@ -181,6 +192,8 @@ export class UserService {
       username: user.username,
       description: user.description,
       warehouseId: user.warehouseId,
+      warehouseName: user.warehouse.name,
+      role: user.role,
       jti: randomUUID(),
     };
 
@@ -208,6 +221,7 @@ export class UserService {
       displayName: user.displayName,
       description: user.description,
       warehouse: user.warehouse,
+      warehouseId: user.warehouseId,
       refresh_token: refresh_token,
       access_token: access_token,
     };
@@ -253,6 +267,8 @@ export class UserService {
         username: userDB.username,
         description: userDB?.description,
         warehouseId: userDB.warehouseId,
+        warehouseName: userDB.warehouse.name,
+        role: userDB.role,
         jti: newJti as unknown as string,
       };
 
@@ -310,25 +326,36 @@ export class UserService {
   }
 
   async updateAccount(body: LoginResponseDto) {
+    const updateData: any = {
+      displayName: body.displayName,
+      isActive: body.isActive,
+    };
+
+    if (body.role) {
+      updateData.role = body.role as ROLE;
+    }
+
     return this.prismaService.user.update({
       where: {
         username: body.username,
       },
-      data: {
-        displayName: body.displayName,
-        isActive: body.isActive,
-      },
+      data: updateData,
     });
   }
 
   async getUserInfo(req: any) {
     //ubah payload sedikit agar bisa langsung dipakai
-    const myWarehouse = await this.prismaService.warehouse.findUnique({
-      where: { id: req.user.warehouseId },
-    });
-    req.user.warehouse = myWarehouse?.name || null;
     delete req.user.jti;
-    return req.user;
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        username: req.user.username,
+      },
+      include: {
+        warehouse: true,
+      },
+    });
+    let { createdAt, updatedAt, ...rest } = user;
+    return rest;
   }
 
   async logout(access_token: string, req: any) {

@@ -618,9 +618,9 @@ export default function CashFlow() {
         </div>
       </main>
       <dialog id="log-modal-detail" className="modal modal-middle ">
-        <div className="modal-box max-w-2xl p-0 overflow-hidden bg-gradient-to-br from-white to-blue-50 dark:from-gray-900 dark:to-blue-950 border border-blue-200 dark:border-blue-800 shadow-2xl flex-col flex overflow-y-auto">
+        <div className="modal-box max-w-2xl p-0 overflow-hidden bg-gradient-to-br from-white to-blue-50   border border-blue-200 dark:border-blue-800 shadow-2xl flex-col flex overflow-y-auto">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+          <div className="bg-gradient-to-r bg-primary p-6 text-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">

@@ -17,6 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from 'src/redis/redis.service';
+import { TokenPayload } from 'src/models/tokenPayload.model';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
@@ -57,19 +58,17 @@ export class FlowLogController {
         } catch (err) {
           return new BadRequestException('❌ Error writing file ' + err);
         }
-        // Return URL
         return `/uploads/attachments/${filename}`;
       }),
     );
-
     return {
       success: true,
       data: urls,
     };
   }
 
-  @Post('/expense')
-  async registerExpense(
+  @Post('/new')
+  async createNew(
     @Body() createFlowLogDto: FlowLogCreateDto,
     @Auth() userInfo: any,
   ) {
@@ -84,41 +83,7 @@ export class FlowLogController {
     await this.redisService.del(cacheKeyMonth);
     await this.redisService.del(cacheKeyDay);
 
-    const result = await this.flowLogService.createExpense(
-      createFlowLogDto,
-      userInfo,
-    );
-
-    // Check if result is an error response
-    if ('statusCode' in result) {
-      return result;
-    }
-
-    return {
-      success: true,
-      data: result,
-    };
-  }
-
-  @Post('/revenue')
-  async registerRevenue(
-    @Body() createFlowLogDto: FlowLogCreateDto,
-    @Auth() userInfo: any,
-  ) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-
-    const cacheKeyMonth = `analytic:${userInfo.warehouseId}:${year}-${month}`;
-    const cacheKeyDay = `analytic:${userInfo.warehouseId}:${year}-${month}-${day}`;
-
-    console.log(cacheKeyDay, cacheKeyMonth);
-
-    await this.redisService.del(cacheKeyMonth);
-    await this.redisService.del(cacheKeyDay);
-
-    const result = await this.flowLogService.createRevenue(
+    const result = await this.flowLogService.createExpenseOrRevenue(
       createFlowLogDto,
       userInfo,
     );
@@ -135,8 +100,8 @@ export class FlowLogController {
   }
 
   @Get()
-  async findAll(@Query() query) {
-    const result = await this.flowLogService.recentFlowLogs(query);
+  async findAll(@Query() query, @Auth() userInfo: TokenPayload) {
+    const result = await this.flowLogService.recentFlowLogs(query, userInfo);
 
     // Check if result is an error response
     if ('statusCode' in result) {

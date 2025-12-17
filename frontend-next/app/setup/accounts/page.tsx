@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { UserInfo } from "@/types/auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AuthApi } from "@/api/auth";
+import { Role } from "@/types/role.type";
 
 export default function AccountsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -32,19 +33,23 @@ export default function AccountsPage() {
     onSuccess: () => {
       toast.success("Account berhasil diupdate");
       setIsDialogOpen(false);
+      setOnEditingAccount(undefined);
+      refetch();
     },
   });
 
-  const { data: accounts = [] } = useQuery<UserInfo[]>({
-    queryKey: ["users"],
+  const { data: accounts = [], refetch } = useQuery<UserInfo[]>({
+    queryKey: ["users", page, searchKey],
     queryFn: async () => await AuthApi.getAllAccount(page, searchKey),
   });
 
   const getRoleColor = (role: string) => {
-    switch (role) {
-      case "admin":
+    switch (role?.toUpperCase()) {
+      case "ADMIN":
         return "bg-red-500/10 text-red-600";
-      case "user":
+      case "IT":
+        return "bg-purple-500/10 text-purple-600";
+      case "KASIR":
         return "bg-blue-500/10 text-blue-600";
       default:
         return "bg-gray-500/10 text-gray-600";
@@ -92,7 +97,7 @@ export default function AccountsPage() {
                     displayName
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Description
+                    Role
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                     Status
@@ -117,12 +122,17 @@ export default function AccountsPage() {
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${getRoleColor(
-                          account.description
+                          account.role || account.description
                         )}`}
                       >
                         <Shield className="h-3 w-3" />
-                        {account.description.charAt(0).toUpperCase() +
-                          account.description.slice(1)}
+                        {account.role
+                          ? account.role.charAt(0).toUpperCase() +
+                            account.role.slice(1)
+                          : account.description
+                          ? account.description.charAt(0).toUpperCase() +
+                            account.description.slice(1)
+                          : "Unknown"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -151,7 +161,15 @@ export default function AccountsPage() {
       </div>
 
       {/* Add/Edit Account Dialog */}
-      <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog.Root
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setOnEditingAccount(undefined);
+          }
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-lg">
@@ -160,20 +178,49 @@ export default function AccountsPage() {
             </Dialog.Title>
 
             <div className="mt-6 space-y-4">
-              <span>Display Name</span>
-              <input
-                type="text"
-                value={onEditingAccount?.displayName || ""}
-                onChange={(e) => {
-                  setOnEditingAccount((prev) =>
-                    prev ? { ...prev, displayName: e.target.value } : undefined
-                  );
-                }}
-                placeholder="display name"
-                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  value={onEditingAccount?.displayName || ""}
+                  onChange={(e) => {
+                    setOnEditingAccount((prev) =>
+                      prev
+                        ? { ...prev, displayName: e.target.value }
+                        : undefined
+                    );
+                  }}
+                  placeholder="display name"
+                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Role
+                </label>
+                <select
+                  value={onEditingAccount?.role || ""}
+                  onChange={(e) => {
+                    setOnEditingAccount((prev) =>
+                      prev ? { ...prev, role: e.target.value } : undefined
+                    );
+                  }}
+                  className="select w-full"
+                >
+                  <option value="" disabled>
+                    Select Role
+                  </option>
+                  {Object.values(Role).map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="form-control">
-                <label className="flex items-center gap-2">
+                <label className="label cursor-pointer justify-start gap-2">
                   <span className="label-text">User Aktif</span>
                   <input
                     type="checkbox"
@@ -189,7 +236,6 @@ export default function AccountsPage() {
                   />
                 </label>
               </div>
-
               <div className="flex gap-3 pt-4">
                 <Button
                   onClick={() => handleEditAccount()}

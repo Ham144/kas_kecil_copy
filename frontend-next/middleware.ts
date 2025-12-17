@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { Role } from "./types/role.type";
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("access_token")?.value;
   const refreshToken = req.cookies.get("refresh_token")?.value;
   const pathname = req.nextUrl.pathname;
 
-  const admin_only = ["/", "/admin", "/setup", "/warehouse"];
-  const kasir_only = ["/"];
+  //page hanya bisa di kunjungi office:non WL non IT
+  const admin_only = [
+    "/",
+    "/admin",
+    "/setup",
+    "/warehouse",
+    "/setup/category",
+    "/admin/flow",
+    "/admin/stats",
+    "/expense",
+    "/revenue",
+  ];
+  //page hanya bisa dikunjugi office:mengandung "WL"
+  const kasir_only = ["/", "/expense", "/revenue"];
 
   // Jika di halaman login, biarkan lewat (tidak perlu check token)
   if (pathname === "/login") {
@@ -29,7 +42,9 @@ export function middleware(req: NextRequest) {
     // === Manual decode JWT ===
     // Decode token untuk check expiration dan role
     const payload = token.split(".")[1];
-    const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
+    const decoded: TokenPayload = JSON.parse(
+      Buffer.from(payload, "base64").toString()
+    );
 
     // Check token expiration (exp adalah timestamp dalam detik)
     const exp = decoded?.exp;
@@ -43,20 +58,20 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    const description = decoded?.description;
+    const role = decoded?.role;
 
     // === Role checking ===
-    if (description === "IT") {
+    if (role === Role.IT) {
       return NextResponse.next();
     }
 
-    if (description?.includes("ADMIN")) {
+    if (role == Role.ADMIN) {
       if (admin_only.includes(pathname)) {
         return NextResponse.next();
       }
     }
 
-    if (description?.includes("KASIR")) {
+    if (role == Role.KASIR) {
       if (kasir_only.includes(pathname)) {
         return NextResponse.next();
       }

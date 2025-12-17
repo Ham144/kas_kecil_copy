@@ -1,3 +1,6 @@
+import { Role } from "./role.type";
+import { Warehouse } from "./warehouse";
+
 export interface LoginRequestLdapDto {
   username: string;
   password: string;
@@ -14,8 +17,9 @@ export interface UserInfo {
   description: string;
   username: string;
   displayName?: string;
-  warehouse: string;
+  warehouse: Warehouse;
   warehouseId?: string;
+  role?: Role; // user.warehouse.name.includes('WL') is KASIR
   isActive?: boolean;
   // Tambahkan field lain sesuai kebutuhan
 }

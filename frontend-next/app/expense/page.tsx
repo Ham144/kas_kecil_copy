@@ -4,14 +4,12 @@ import { useCallback } from "react";
 import { TopNavigation } from "../../components/top-navigation";
 import { ExpenseForm } from "../../components/expense-form";
 import { RecentMyFlow } from "../../components/recent-my-flow";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FlowLog, FlowLogType, PaginatedFlowLogs } from "@/types/flowLog";
+import { useQuery } from "@tanstack/react-query";
+import { FlowLog, FlowLogType } from "@/types/flowLog";
 import { FlowLogApi } from "@/api/flowLog.api";
 import { Loader2, AlertCircle } from "lucide-react";
 
 export default function ExpensePage() {
-  const queryClient = useQueryClient();
-
   // Fetch recent expenses with proper error handling and loading states
   const {
     data: recentOutflows,
@@ -79,47 +77,30 @@ export default function ExpensePage() {
   return (
     <div className="min-h-screen bg-background">
       <TopNavigation />
-      <main className="flex-1">
-        <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
-          <div className="grid gap-8 lg:grid-cols-3">
-            {/* Expense Form */}
-            <div className="lg:col-span-2">
-              <div className="bg-card rounded-lg border p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold tracking-tight">
-                    Add Expense
-                  </h2>
-                </div>
-                <ExpenseForm />
-              </div>
+      <main className="grid grid-cols-2 mx-auto gap-3 container p-5">
+        {/* Expense Form */}
+        <div className="lg:col-span-1">
+          <div className="bg-card rounded-lg border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold tracking-tight">Add Expense</h2>
             </div>
+            <ExpenseForm />
+          </div>
+        </div>
 
-            {/* Recent Expenses */}
-            <div className="lg:col-span-1">
-              <div className="bg-card rounded-lg border p-3">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold">Recent Expenses</h2>
-                  <button
-                    onClick={handleRefresh}
-                    disabled={isLoadingExpenses}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                  >
-                    Refresh
-                  </button>
-                </div>
-
-                {isLoadingExpenses ? (
-                  <LoadingState />
-                ) : isExpensesError ? (
-                  <ErrorState error={expensesError} onRetry={refetchExpenses} />
-                ) : (
-                  <RecentMyFlow
-                    type={FlowLogType.OUT}
-                    logs={recentOutflows || []}
-                  />
-                )}
-              </div>
-            </div>
+        {/* Recent Expenses */}
+        <div className="lg:col-span-1 ">
+          <div className="bg-card rounded-lg border p-3">
+            {isLoadingExpenses ? (
+              <LoadingState />
+            ) : isExpensesError ? (
+              <ErrorState error={expensesError} onRetry={refetchExpenses} />
+            ) : (
+              <RecentMyFlow
+                type={FlowLogType.OUT}
+                logs={recentOutflows || []}
+              />
+            )}
           </div>
         </div>
       </main>

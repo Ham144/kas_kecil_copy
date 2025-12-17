@@ -8,6 +8,7 @@ export class FlowlogResponseDto {
   createdAt?: Date;
   createdBy?: string;
   warehouse?: object;
+  date: Date;
   category: object;
 }
 
@@ -16,8 +17,10 @@ export class FlowLogCreateDto {
   amount: number;
   note: string;
   attachments: string[];
-  type?: FlowLogType;
+  type?: string;
   warehouse: string;
+  warehousId: string;
+  date: Date;
   category: string;
 }
 

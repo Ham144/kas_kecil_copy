@@ -11,8 +11,8 @@ import { useUserInfo } from "./UserContext";
 
 export function LoginForm() {
   const [formData, setFormData] = useState({
-    username: "",
-    password: "",
+    username: "resna.permana",
+    password: "Zxcv1234",
   });
   const { userInfo, setUserInfo } = useUserInfo();
   if (userInfo) {
@@ -32,7 +32,7 @@ export function LoginForm() {
   const { mutateAsync: handleLogin, isPending: isLoading } = useMutation({
     mutationKey: ["login"],
     mutationFn: AuthApi.loginUserLdap,
-    onSuccess: (data) => {
+    onSuccess: () => {
       localStorage.removeItem("redirectCount");
       window.location.reload();
     },

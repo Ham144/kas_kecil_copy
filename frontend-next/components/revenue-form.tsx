@@ -12,22 +12,33 @@ import { FlowLogApi } from "@/api/flowLog.api";
 import axiosInstance from "@/lib/axios";
 import { FlowCategoryResponse } from "@/types/flowcategory.type";
 import { useRouter } from "next/navigation";
+import { WarehouseApi } from "@/api/warehouse";
+import { Role } from "@/types/role.type";
 
 export function RevenueForm({}: {}) {
   const { userInfo } = useUserInfo();
-  const [formData, setFormData] = useState<CreateFlowLogDto>({
+
+  let initialFormData: CreateFlowLogDto = {
     title: "",
     category: "",
-    warehouse: (userInfo as any)?.warehouseId || "",
+    warehouseId: (userInfo as any)?.warehouseId || "",
     amount: 0,
     note: "",
     attachments: [],
     type: FlowLogType.IN,
-  });
+    date: new Date().toISOString().split("T")[0],
+  };
+  const [formData, setFormData] = useState<CreateFlowLogDto>(initialFormData);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const queryClient = useQueryClient();
   const router = useRouter();
+
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: async () => await WarehouseApi.getWarehouses(""),
+    enabled: userInfo?.role != Role.KASIR,
+  });
 
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
@@ -39,16 +50,6 @@ export function RevenueForm({}: {}) {
       return res.data;
     },
   });
-
-  // Update warehouse when userInfo changes
-  useEffect(() => {
-    if (userInfo && (userInfo as any)?.warehouseId) {
-      setFormData((prev) => ({
-        ...prev,
-        warehouse: (userInfo as any)?.warehouseId,
-      }));
-    }
-  }, [userInfo]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -72,13 +73,6 @@ export function RevenueForm({}: {}) {
     useMutation({
       mutationKey: ["createRevenue"],
       mutationFn: async (data: CreateFlowLogDto & { files?: File[] }) => {
-        // Validate required fields
-        if (!data.title || !data.amount || !data.warehouse || !data.category) {
-          throw new Error(
-            "Missing required fields: title, amount, warehouse, and category are required"
-          );
-        }
-
         // Upload files first if any
         let filePaths: string[] = [];
         if (data.files && data.files.length > 0) {
@@ -95,7 +89,7 @@ export function RevenueForm({}: {}) {
           attachments: filePaths,
         };
 
-        const response = await FlowLogApi.registerRevenue(revenueData);
+        const response = await FlowLogApi.createNew(revenueData);
 
         if (!response.success) {
           throw new Error(response.message || "Failed to create revenue");
@@ -115,15 +109,7 @@ export function RevenueForm({}: {}) {
         });
 
         // Reset form
-        setFormData({
-          title: "",
-          category: "",
-          warehouse: (userInfo as any)?.warehouseId || "",
-          amount: 0,
-          note: "",
-          attachments: [],
-          type: FlowLogType.IN,
-        });
+        setFormData(initialFormData);
         setPreviews([]);
         setUploadedFiles([]);
       },
@@ -184,6 +170,7 @@ export function RevenueForm({}: {}) {
         toast.error("Failed to generate previews");
       });
   };
+
   const removeAttachment = (index: number) => {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => prev.filter((_, i) => i !== index));
@@ -192,14 +179,15 @@ export function RevenueForm({}: {}) {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log(formData);
     // Validate required fields
     if (
       !formData.title ||
       !formData.amount ||
-      !formData.warehouse ||
+      !formData.warehouseId ||
       !formData.category
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Tolong isi semua field yang diperlukan");
       return;
     }
 
@@ -243,7 +231,6 @@ export function RevenueForm({}: {}) {
             className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
-
         <div>
           <label className=" text-sm font-medium text-foreground flex justify-between">
             <div className="flex">
@@ -272,7 +259,6 @@ export function RevenueForm({}: {}) {
             ))}
           </select>
         </div>
-
         {/* Username (Disabled) */}
         <div>
           <label className="block text-sm font-medium text-foreground">
@@ -285,7 +271,6 @@ export function RevenueForm({}: {}) {
             className="mt-2 w-full rounded-xl border border-input bg-muted px-4 py-2.5 text-foreground opacity-60"
           />
         </div>
-
         {/* Amount */}
         <div>
           <label className="block text-sm font-medium text-foreground">
@@ -307,15 +292,42 @@ export function RevenueForm({}: {}) {
         </div>
 
         {/* Warehouse (Disabled) */}
-        <div>
+        <div className="w-full border p-2 rounded-md">
           <label className="block text-sm font-medium text-foreground">
             Warehouse
           </label>
+          <select
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                warehouseId: e.target.value,
+              }))
+            }
+            className="select w-full "
+          >
+            {warehouses?.length &&
+              warehouses.map((warehouse: Warehouse) => (
+                <option value={warehouse.id}>{warehouse.name}</option>
+              ))}
+          </select>
+        </div>
+
+        {/* Date (Disabled) */}
+        <div className="w-full  border p-2 rounded-md ">
+          <label className="block text-sm font-medium text-foreground">
+            Date
+          </label>
+
           <input
-            type="text"
-            value={userInfo?.warehouse}
-            disabled
-            className="mt-2 w-full rounded-xl border border-input bg-muted px-4 py-2.5 text-foreground opacity-60"
+            type="date"
+            className="input w-full "
+            value={formData.date}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                date: e.target.value, // ⬅️ LANGSUNG STRING
+              }))
+            }
           />
         </div>
 
@@ -333,7 +345,6 @@ export function RevenueForm({}: {}) {
             className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
-
         {/* Attachments */}
         <div>
           <label className="block text-sm font-medium text-foreground">
@@ -391,7 +402,6 @@ export function RevenueForm({}: {}) {
             </div>
           )}
         </div>
-
         {/* Actions */}
         <div className="flex gap-3 pt-4">
           <Button

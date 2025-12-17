@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card } from "@radix-ui/themes";
@@ -9,22 +9,27 @@ import { CreateFlowLogDto, FlowLog, FlowLogType } from "@/types/flowLog";
 import { useUserInfo } from "./UserContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlowLogApi } from "@/api/flowLog.api";
-import axiosInstance from "@/lib/axios";
 import { FlowCategoryResponse } from "@/types/flowcategory.type";
 import { useRouter } from "next/navigation";
 import { FlowLogCategoryApi } from "@/api/category.api";
+import { WarehouseApi } from "@/api/warehouse";
+import { Role } from "@/types/role.type";
+import { Warehouse } from "@/types/warehouse";
 
 export function ExpenseForm({}: {}) {
   const { userInfo } = useUserInfo();
-  const [formData, setFormData] = useState<CreateFlowLogDto>({
+
+  const initialFormData: CreateFlowLogDto = {
     title: "",
     category: "",
-    warehouse: (userInfo as any)?.warehouseId || "",
+    warehouseId: userInfo?.warehouseId || "",
     amount: 0,
     note: "",
+    date: new Date().toISOString().split("T")[0],
     attachments: [],
     type: FlowLogType.OUT,
-  });
+  };
+  const [formData, setFormData] = useState<CreateFlowLogDto>(initialFormData);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const queryClient = useQueryClient();
@@ -36,15 +41,11 @@ export function ExpenseForm({}: {}) {
     queryFn: FlowLogCategoryApi.showAll,
   });
 
-  // Update warehouse when userInfo changes
-  useEffect(() => {
-    if (userInfo && (userInfo as any)?.warehouseId) {
-      setFormData((prev) => ({
-        ...prev,
-        warehouse: (userInfo as any)?.warehouseId,
-      }));
-    }
-  }, [userInfo]);
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: async () => await WarehouseApi.getWarehouses(""),
+    enabled: userInfo?.role != Role.KASIR,
+  });
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -68,13 +69,6 @@ export function ExpenseForm({}: {}) {
     useMutation({
       mutationKey: ["createExpense"],
       mutationFn: async (data: CreateFlowLogDto & { files?: File[] }) => {
-        // Validate required fields
-        if (!data.title || !data.amount || !data.warehouse || !data.category) {
-          throw new Error(
-            "Missing required fields: title, amount, warehouse, and category are required"
-          );
-        }
-
         // Upload files first if any
         let filePaths: string[] = [];
         if (data.files && data.files.length > 0) {
@@ -91,7 +85,7 @@ export function ExpenseForm({}: {}) {
           attachments: filePaths,
         };
 
-        const response = await FlowLogApi.registerExpense(expenseData);
+        const response = await FlowLogApi.createNew(expenseData);
 
         if (!response.success) {
           throw new Error(response.message || "Failed to create expense");
@@ -111,15 +105,7 @@ export function ExpenseForm({}: {}) {
         });
 
         // Reset form
-        setFormData({
-          title: "",
-          category: "",
-          warehouse: (userInfo as any)?.warehouseId || "",
-          amount: 0,
-          note: "",
-          attachments: [],
-          type: FlowLogType.OUT,
-        });
+        setFormData(initialFormData);
         setPreviews([]);
         setUploadedFiles([]);
       },
@@ -192,10 +178,10 @@ export function ExpenseForm({}: {}) {
     if (
       !formData.title ||
       !formData.amount ||
-      !formData.warehouse ||
+      !formData.warehouseId ||
       !formData.category
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Tolong isi semua field yang diperlukan");
       return;
     }
 
@@ -218,13 +204,6 @@ export function ExpenseForm({}: {}) {
 
   return (
     <Card className="shadow-lg grid-cols-2">
-      <div className="border-b border-border bg-card p-6">
-        <h2 className="text-2xl font-semibold text-foreground">Add Expense</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Record a new petty cash expense for your warehouse
-        </p>
-      </div>
-
       <form onSubmit={handleFormSubmit} className="space-y-6 p-6">
         <div>
           <label className="block text-sm font-medium text-foreground">
@@ -303,15 +282,42 @@ export function ExpenseForm({}: {}) {
         </div>
 
         {/* Warehouse (Disabled) */}
-        <div>
+        <div className="w-full border p-2 rounded-md">
           <label className="block text-sm font-medium text-foreground">
             Warehouse
           </label>
+          <select
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                warehouseId: e.target.value,
+              }))
+            }
+            className="select w-full "
+          >
+            {warehouses?.length &&
+              warehouses.map((warehouse: Warehouse) => (
+                <option value={warehouse.id}>{warehouse.name}</option>
+              ))}
+          </select>
+        </div>
+
+        {/* Date (Disabled) */}
+        <div className="w-full  border p-2 rounded-md ">
+          <label className="block text-sm font-medium text-foreground">
+            Date
+          </label>
+
           <input
-            type="text"
-            value={userInfo?.warehouse}
-            disabled
-            className="mt-2 w-full rounded-xl border border-input bg-muted px-4 py-2.5 text-foreground opacity-60"
+            type="date"
+            className="input w-full "
+            value={formData.date}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                date: e.target.value, // ⬅️ LANGSUNG STRING
+              }))
+            }
           />
         </div>
 

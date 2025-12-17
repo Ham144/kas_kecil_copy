@@ -19,6 +19,8 @@ import { GenerateCsvService } from 'src/common/generateCsv.service';
 import { RedisService } from 'src/redis/redis.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import { TokenPayload } from 'src/models/tokenPayload.model';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class FlowLogService {
@@ -28,34 +30,50 @@ export class FlowLogService {
     private redisService: RedisService,
   ) {}
 
-  async createExpense(
+  async createExpenseOrRevenue(
     createFlowLogDto: FlowLogCreateDto,
     userInfo: any,
   ): Promise<FlowlogResponseDto | ErrorResponse> {
     try {
-      const flowLog = await this.prismaService.flowLog.create({
-        data: {
-          title: createFlowLogDto.title,
-          amount: createFlowLogDto.amount,
-          note: createFlowLogDto.note,
-          attachments: createFlowLogDto.attachments,
-          type: 'OUT',
-          warehouse: {
-            connect: {
-              id: userInfo.warehouseId,
-            },
-          },
-          category: {
-            connect: {
-              id: createFlowLogDto.category,
-            },
-          },
-          createdBy: {
-            connect: {
-              username: userInfo.username,
-            },
+      const warehouseId =
+        (createFlowLogDto as any).warehousId ||
+        (createFlowLogDto as any).warehouseId ||
+        (createFlowLogDto as any).warehouse;
+
+      const data: Prisma.FlowLogCreateInput = {
+        title: createFlowLogDto.title,
+        amount: createFlowLogDto.amount,
+        note: createFlowLogDto.note,
+        attachments: createFlowLogDto.attachments,
+        date: new Date(createFlowLogDto.date),
+        type: FlowLogType[createFlowLogDto.type],
+        category: {
+          connect: {
+            id: createFlowLogDto.category,
           },
         },
+        createdBy: {
+          connect: {
+            username: userInfo.username,
+          },
+        },
+        warehouse: {
+          connect: {
+            id: warehouseId,
+          },
+        },
+      };
+
+      if (warehouseId) {
+        (data as any).warehouse = {
+          connect: {
+            id: warehouseId,
+          },
+        };
+      }
+
+      const flowLog = await this.prismaService.flowLog.create({
+        data,
         include: {
           warehouse: true,
           category: true,
@@ -68,14 +86,14 @@ export class FlowLogService {
         title: flowLog.title,
         amount: flowLog.amount,
         note: flowLog.note,
+        date: flowLog.date,
         attachments: flowLog.attachments || [],
-        type: FlowLogType.OUT, // Ensure this matches the expected enum value
+        type: flowLog.type as FlowLogType,
         createdAt: flowLog.createdAt,
         createdBy: userInfo.username,
-        category: flowLog.category, // Correctly reference the category property
+        category: flowLog.category,
       };
     } catch (error) {
-      console.log(error.message);
       return {
         statusCode: 500,
         message: `Error creating expense: ${error.message}`,
@@ -83,62 +101,7 @@ export class FlowLogService {
     }
   }
 
-  async createRevenue(
-    createFlowLogDto: FlowLogCreateDto,
-    userInfo: any,
-  ): Promise<FlowlogResponseDto | ErrorResponse> {
-    try {
-      const flowLog = await this.prismaService.flowLog.create({
-        data: {
-          title: createFlowLogDto.title,
-          amount: createFlowLogDto.amount,
-          note: createFlowLogDto.note,
-          attachments: createFlowLogDto.attachments,
-          type: 'IN',
-          warehouse: {
-            connect: {
-              id: userInfo.warehouseId,
-            },
-          },
-          category: {
-            connect: {
-              id: createFlowLogDto.category,
-            },
-          },
-          createdBy: {
-            connect: {
-              username: userInfo.username,
-            },
-          },
-        },
-        include: {
-          warehouse: true,
-          category: true,
-          createdBy: true,
-        },
-      });
-
-      return {
-        id: flowLog.id,
-        title: flowLog.title,
-        amount: flowLog.amount,
-        note: flowLog.note,
-        attachments: flowLog.attachments || [],
-        type: FlowLogType.IN, // Ensure this matches the expected enum value
-        createdAt: flowLog.createdAt,
-        createdBy: userInfo.username,
-        category: flowLog.category, // Correctly reference the category property
-      };
-    } catch (error) {
-      console.log(error.message);
-      return {
-        statusCode: 500,
-        message: `Error creating expense: ${error.message}`,
-      };
-    }
-  }
-
-  async recentFlowLogs(filters: RecentFlowLogsFilter) {
+  async recentFlowLogs(filters: RecentFlowLogsFilter, userInfo: TokenPayload) {
     const {
       type,
       category,
@@ -152,7 +115,8 @@ export class FlowLogService {
     } = filters;
 
     try {
-      const where: any = {};
+      const isKasir = userInfo.role === 'KASIR';
+      const where: Prisma.FlowLogWhereInput = {};
 
       // ✅ Filter dasar
       if (type !== FlowLogType.ALL) {
@@ -163,6 +127,11 @@ export class FlowLogService {
       }
       if (warehouse && warehouse !== 'all') {
         where.warehouseId = warehouse;
+      }
+
+      //jika kasir hanya munculin flow dari office nya
+      if (isKasir) {
+        where.warehouseId = userInfo.warehouseId;
       }
 
       // ✅ Filter pencarian

@@ -1,3 +1,6 @@
+import { UserInfo } from "./auth";
+import { Warehouse } from "./warehouse";
+
 export enum FlowLogType {
   IN = "IN",
   OUT = "OUT",
@@ -13,12 +16,9 @@ export interface FlowLog {
   attachments?: string[];
   type: FlowLogType;
   createdAt?: string;
-  createdBy?: string;
-  warehouse?: {
-    id: string;
-    name: string;
-    // Add other warehouse properties as needed
-  };
+  createdBy?: UserInfo;
+  warehouse?: Warehouse;
+  date?: Date;
   category?: {
     id: string;
     name: string;
@@ -33,18 +33,10 @@ export interface CreateFlowLogDto {
   note: string;
   attachments?: string[];
   type?: FlowLogType;
-  warehouse: string; // warehouse ID
+  warehouseId: string; // warehouse ID
+  warehouse?: Warehouse;
+  date?: string;
   category: string; // category ID
-}
-
-// DTO for updating a flow log
-export interface UpdateFlowLogDto {
-  title?: string;
-  amount?: number;
-  note?: string;
-  attachments?: string[];
-  warehouse?: string;
-  category?: string;
 }
 
 // Filter options for querying flow logs

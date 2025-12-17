@@ -17,6 +17,7 @@ import { Button } from "@radix-ui/themes";
 import { useMutation } from "@tanstack/react-query";
 import { AuthApi } from "@/api/auth";
 import { useUserInfo } from "./UserContext";
+import { Role } from "@/types/role.type";
 
 export function TopNavigation() {
   const pathname = usePathname();
@@ -96,7 +97,7 @@ export function TopNavigation() {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Warehouse className="h-3 w-3" />
-                      {userInfo?.warehouse || "No warehouse"}
+                      {userInfo?.warehouse?.name || "No warehouse"}
                     </div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -121,15 +122,23 @@ export function TopNavigation() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Role</p>
+                      <p className="text-xs text-muted-foreground">
+                        Description
+                      </p>
                       <p className="text-sm font-medium text-foreground">
                         {userInfo?.description}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Warehouse</p>
+                      <p className="text-xs text-muted-foreground">Office</p>
                       <p className="text-sm font-medium text-foreground">
-                        {userInfo?.warehouse || "No warehouse"}
+                        {userInfo?.warehouse?.name || "No warehouse"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Role</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {Role[userInfo?.role]}
                       </p>
                     </div>
                   </div>

@@ -20,16 +20,10 @@ export const FlowLogApi = {
     return res.data;
   },
 
-  registerExpense: async (data: CreateFlowLogDto) => {
-    const res = await axiosInstance.post("/api/flow-log/expense", data);
+  createNew: async (data: CreateFlowLogDto) => {
+    const res = await axiosInstance.post("/api/flow-log/new", data);
     return res.data;
   },
-
-  registerRevenue: async (data: CreateFlowLogDto) => {
-    const res = await axiosInstance.post("/api/flow-log/revenue", data);
-    return res.data;
-  },
-
   getRecentFlowLogs: async (filter: RecentFlowLogsFilter) => {
     const params = new URLSearchParams();
 

@@ -9,7 +9,8 @@ datasource db {
 
 model User {
   username        String @id
-  description String
+  description String @default("unknown") //ini bebas
+  role ROLE @default(KASIR) //ini yang menentukan RBAC
   isActive Boolean @default(true)
   displayName String
   createdAt DateTime @default(now())
@@ -19,6 +20,13 @@ model User {
   warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
   Globalsetting Globalsetting[]
 }
+
+enum ROLE {
+  KASIR
+  ADMIN
+  IT
+}
+
 
 enum AuthMethod {
   LDAP
@@ -56,6 +64,7 @@ model FlowLog {
   createdBy User @relation(fields: [createdByUsername], references: [username])
   warehouseId String
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  date DateTime @default(now()) 
   categoryId String
   category FlowLogCategory @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now()) //no updateAt, bisa kacau

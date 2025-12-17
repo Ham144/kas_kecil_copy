@@ -3,6 +3,8 @@ export class LoginResponseDto {
   username: string;
   displayName: string;
   warehouse: object;
+  warehouseId: string;
+  role?: string;
   isActive?: boolean;
   refresh_token?: string;
   access_token?: string;
