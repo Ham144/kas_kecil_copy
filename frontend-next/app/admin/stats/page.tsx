@@ -32,6 +32,8 @@ import { GetAnalyticFilter } from "@/types/flowLog";
 import { useUserInfo } from "@/components/UserContext";
 import { ModePeriod } from "@/types/flowcategory.type";
 import { Role } from "@/types/role.type";
+import { WarehouseApi } from "@/api/warehouse";
+import { Warehouse } from "@/types/warehouse";
 
 export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
@@ -43,6 +45,11 @@ export default function StatsPage() {
     selectedWarehouseId: userInfo?.warehouseId,
   });
 
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: async () => await WarehouseApi.getWarehouses(""),
+  });
+
   const { data: analytic } = useQuery({
     queryKey: ["flow-logs", filter, userInfo?.warehouseId, modePeriod],
     queryFn: async () => {
@@ -51,8 +58,7 @@ export default function StatsPage() {
         return res;
       } catch (error: any) {
         setIsErrorAnalytic(true);
-        console.log(error);
-        setErrors((prevErrors) => [...prevErrors, error.response.data.message]);
+        setErrors(() => [error.response.data.message]);
         return null;
       }
     },
@@ -79,7 +85,7 @@ export default function StatsPage() {
   useEffect(() => {
     setFilter((prevFilter) => ({
       ...prevFilter,
-      selectedWarehouseId: userInfo?.warehouseId,
+      selectedWarehouseId: "",
     }));
   }, [userInfo?.warehouseId]);
 
@@ -98,23 +104,6 @@ export default function StatsPage() {
       }));
     }
   }, [modePeriod]);
-
-  console.log(filter.selectedDate);
-  if (isErrorAnalytic) {
-    return (
-      <div className="min-h-screen bg-background">
-        <TopNavigation />
-        <div role="alert" className="alert alert-error">
-          <FileWarningIcon />
-          <div className="flex flex-col gap-3">
-            {errors.map((error, index) => (
-              <span key={index}>{error}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -243,7 +232,16 @@ export default function StatsPage() {
               </div>
             </Card>
           </div>
-
+          {isErrorAnalytic && (
+            <div role="alert" className="alert alert-error">
+              <FileWarningIcon />
+              <div className="flex flex-col gap-3">
+                {errors.map((error, index) => (
+                  <span key={index}>{error}</span>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Filters Card */}
           <Card className="mb-6 shadow-lg">
             <div className="border-b border-border bg-card p-6">
@@ -311,8 +309,8 @@ export default function StatsPage() {
                     className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="all">All Warehouses</option>
-                    {analytic?.topWarehouses &&
-                      analytic?.topWarehouses.map((warehouse: any) => (
+                    {warehouses?.length &&
+                      warehouses.map((warehouse: Warehouse) => (
                         <option key={warehouse.id} value={warehouse.id}>
                           {warehouse.name}
                         </option>

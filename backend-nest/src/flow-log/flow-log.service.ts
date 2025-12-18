@@ -376,7 +376,7 @@ export class FlowLogService {
 
     if (typeof currentBudget?.amount !== 'number')
       throw new NotFoundException(
-        `Budget warehouse anda untuk bulan ${currentMonth + 1} belum dibuat. Silahkan setup terlebih dahulu`,
+        `Budget warehouse dipilih untuk bulan ${currentMonth + 1} belum dibuat. Silahkan setup terlebih dahulu`,
       );
 
     const budgetSpent = totalInflow - totalOutflow;
