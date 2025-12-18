@@ -31,6 +31,7 @@ import { FlowLogApi } from "@/api/flowLog.api";
 import { GetAnalyticFilter } from "@/types/flowLog";
 import { useUserInfo } from "@/components/UserContext";
 import { ModePeriod } from "@/types/flowcategory.type";
+import { Role } from "@/types/role.type";
 
 export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
@@ -300,7 +301,7 @@ export default function StatsPage() {
                   </label>
                   <select
                     value={filter.selectedWarehouseId}
-                    disabled={userInfo?.description !== "IT"}
+                    disabled={userInfo?.role != Role.ADMIN}
                     onChange={(e) =>
                       setFilter((prev) => ({
                         ...prev,

@@ -52,7 +52,6 @@ model Budget {
   amount      Float
 }
 
-
 model FlowLog {
   id String @id @default(uuid())
   title String

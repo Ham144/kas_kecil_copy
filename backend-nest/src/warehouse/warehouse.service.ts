@@ -11,8 +11,9 @@ import {
 } from 'src/models/warehouse.model';
 import { PrismaService } from 'src/common/prisma.service';
 import { ValidationService } from 'src/common/validation.service';
-import { User } from '@prisma/client';
+import { ROLE, User } from '@prisma/client';
 import { SimpleSuccess } from 'src/models/error.model';
+import { TokenPayload } from 'src/models/tokenPayload.model';
 
 @Injectable()
 export class WarehouseService {
@@ -145,13 +146,11 @@ export class WarehouseService {
 
   async getWarehouses(
     searchKey?: string,
-    userInfo?: any,
+    userInfo?: TokenPayload,
   ): Promise<WarehouseResponseDto[]> {
-    const isSuperAdmin = userInfo?.description === 'IT';
-
     let where: any = {};
 
-    if (isSuperAdmin) {
+    if (userInfo.role === ROLE.ADMIN) {
       // Bentuk where dasar
       where = {
         ...(searchKey && {
@@ -164,7 +163,7 @@ export class WarehouseService {
     }
 
     // Jika bukan superadmin, tampilkan hanya warehouse miliknya
-    if (!isSuperAdmin) {
+    if (userInfo.role !== ROLE.ADMIN) {
       where.members = {
         some: {
           username: userInfo.username,

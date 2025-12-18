@@ -30,3 +30,4 @@ setup biaya apa saja: parkir, BBM
 [x] add: field date untuk revenue & expense
 [x] add: filtering recent flow untuk "KASIR"
 [x] mod: perbaiki tampilan recent flow
+[x] fid: role: admin boleh get semua warehouse
