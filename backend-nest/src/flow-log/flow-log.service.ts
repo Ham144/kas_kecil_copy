@@ -175,62 +175,69 @@ export class FlowLogService {
       }
 
       if (isDownload) {
-        if (this.redisService.get(JSON.stringify(where))) {
-          const csvFile = await this.redisService.get(JSON.stringify(where));
+        try {
+          if (this.redisService.get(JSON.stringify(where))) {
+            const csvFile = await this.redisService.get(JSON.stringify(where));
 
-          //make csv in /uploads/report
-          fs.promises.writeFile(
-            path.join(
-              process.cwd(),
-              'uploads',
-              'report',
-              'cached-redis-report.csv',
-            ),
-            csvFile,
-          );
-
-          setTimeout(() => {
-            fs.promises.unlink(
+            //make csv in /uploads/report
+            fs.promises.writeFile(
               path.join(
                 process.cwd(),
                 'uploads',
                 'report',
                 'cached-redis-report.csv',
               ),
+              csvFile,
+            );
+
+            setTimeout(() => {
+              fs.promises.unlink(
+                path.join(
+                  process.cwd(),
+                  'uploads',
+                  'report',
+                  'cached-redis-report.csv',
+                ),
+              );
+            }, 10000);
+
+            return {
+              url: `uploads/report/cached-redis-report.csv`,
+            };
+          }
+
+          const logs = await this.prismaService.flowLog.findMany({
+            where,
+            include: {
+              warehouse: true,
+              createdBy: true,
+              category: true,
+            },
+          });
+
+          const csvFile = await this.generateCsvService.generateCsv(logs);
+          await this.redisService.set(JSON.stringify(where), csvFile, 3600); //1 hour
+          //make csv in /uploads/report
+          fs.promises.writeFile(
+            path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
+            csvFile,
+          );
+
+          setTimeout(() => {
+            fs.promises.unlink(
+              path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
             );
           }, 10000);
 
           return {
-            url: `uploads/report/cached-redis-report.csv`,
+            url: `uploads/report/fresh-report.csv`,
+          };
+        } catch (error) {
+          return {
+            statusCode: 500,
+            message: error.message || 'Internal server error',
           };
         }
-
-        const logs = await this.prismaService.flowLog.findMany({
-          where,
-          include: {
-            warehouse: true,
-            createdBy: true,
-            category: true,
-          },
-        });
-
-        const csvFile = await this.generateCsvService.generateCsv(logs);
-        await this.redisService.set(JSON.stringify(where), csvFile, 3600); //1 hour
-        //make csv in /uploads/report
-        fs.promises.writeFile(
-          path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
-          csvFile,
-        );
-
-        setTimeout(() => {
-          fs.promises.unlink(
-            path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
-          );
-        }, 10000);
-
-        return {
-          url: `uploads/report/fresh-report.csv`,
-        };
       }
 
       // ✅ Query data dan total paralel
