@@ -25,19 +25,19 @@ export class BudgetService {
       body,
     )) as BudgetCreateDto;
 
-    // Check if warehouse exists
-    const warehouse = await this.prismaService.warehouse.findUnique({
-      where: { id: validBudget.warehouseId },
+    // Check if category exists
+    const category = await this.prismaService.flowLogCategory.findUnique({
+      where: { id: validBudget.categoryId },
     });
 
-    if (!warehouse) {
-      throw new NotFoundException('Warehouse tidak ditemukan');
+    if (!category) {
+      throw new NotFoundException('Category tidak ditemukan');
     }
 
-    // Check if budget already exists for this warehouse, month, and year
+    // Check if budget already exists for this category, month, and year
     const existingBudget = await this.prismaService.budget.findFirst({
       where: {
-        warehouseId: validBudget.warehouseId,
+        categoryId: validBudget.categoryId,
         month: validBudget.month,
         year: validBudget.year,
       },
@@ -45,22 +45,23 @@ export class BudgetService {
 
     if (existingBudget) {
       throw new BadRequestException(
-        `Budget untuk ${validBudget.month}/${validBudget.year} sudah ada untuk warehouse ini`,
+        `Budget untuk ${validBudget.month}/${validBudget.year} sudah ada untuk category ini`,
       );
     }
-
     const budget = await this.prismaService.budget.create({
       data: {
-        warehouseId: validBudget.warehouseId,
         month: validBudget.month,
         year: validBudget.year,
         amount: validBudget.amount,
+        category: {
+          connect: { id: validBudget.categoryId },
+        },
       },
     });
 
     return {
       id: budget.id,
-      warehouseId: budget.warehouseId,
+      categoryId: budget.categoryId,
       month: budget.month,
       year: budget.year,
       amount: budget.amount,
@@ -105,7 +106,7 @@ export class BudgetService {
 
       const duplicateBudget = await this.prismaService.budget.findFirst({
         where: {
-          warehouseId: existingBudget.warehouseId,
+          categoryId: existingBudget.categoryId,
           month,
           year,
           id: { not: id },
@@ -114,7 +115,7 @@ export class BudgetService {
 
       if (duplicateBudget) {
         throw new BadRequestException(
-          `Budget untuk ${month}/${year} sudah ada untuk warehouse ini`,
+          `Budget untuk ${month}/${year} sudah ada untuk category ini`,
         );
       }
     }
@@ -126,33 +127,31 @@ export class BudgetService {
 
     return {
       id: budget.id,
-      warehouseId: budget.warehouseId,
+      categoryId: budget.categoryId,
       month: budget.month,
       year: budget.year,
       amount: budget.amount,
     };
   }
 
-  async getBudgetsByWarehouse(
-    warehouseId: string,
-  ): Promise<BudgetResponseDto[]> {
-    // Check if warehouse exists
-    const warehouse = await this.prismaService.warehouse.findUnique({
-      where: { id: warehouseId },
+  async getBudgetsByCategory(categoryId: string): Promise<BudgetResponseDto[]> {
+    // Check if category exists
+    const category = await this.prismaService.flowLogCategory.findUnique({
+      where: { id: categoryId },
     });
 
-    if (!warehouse) {
-      throw new NotFoundException('Warehouse tidak ditemukan');
+    if (!categoryId) {
+      throw new NotFoundException('category tidak ditemukan');
     }
 
     const budgets = await this.prismaService.budget.findMany({
-      where: { warehouseId },
+      where: { categoryId },
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
     });
 
     return budgets.map((budget) => ({
       id: budget.id,
-      warehouseId: budget.warehouseId,
+      categoryId: budget.categoryId,
       month: budget.month,
       year: budget.year,
       amount: budget.amount,
@@ -170,7 +169,7 @@ export class BudgetService {
 
     return {
       id: budget.id,
-      warehouseId: budget.warehouseId,
+      categoryId: budget.categoryId,
       month: budget.month,
       year: budget.year,
       amount: budget.amount,
@@ -191,4 +190,3 @@ export class BudgetService {
     });
   }
 }
-

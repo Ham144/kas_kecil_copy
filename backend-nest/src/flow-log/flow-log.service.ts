@@ -274,8 +274,8 @@ export class FlowLogService {
     }
   }
 
-  async getAnalytics(userInfo: any, filter: GetAnalyticFilter) {
-    const { selectedDate, selectedWarehouseId } = filter;
+  async getAnalytics(userInfo: TokenPayload, filter: GetAnalyticFilter) {
+    const { selectedDate, selectedWarehouseId, selectedCategoryId } = filter;
 
     const [yearStr, monthStr, dateStr] = selectedDate.toString().split('-');
 
@@ -374,7 +374,7 @@ export class FlowLogService {
         : await this.prismaService.budget.findFirst({
             where: {
               ...(selectedWarehouseId !== 'all' && {
-                warehouseId: selectedWarehouseId,
+                categoryId: selectedCategoryId,
               }),
               month: Number(currentMonth + 1),
               year: Number(currentYear),
@@ -425,6 +425,43 @@ export class FlowLogService {
       },
       [] as { date: string; IN?: number; OUT?: number }[],
     );
+    const categoriesToBudget = [];
+    for (const category of categoriesWithNameRaw) {
+      const budget = await this.prismaService.budget.findFirst({
+        where: {
+          categoryId: category.categoryId,
+          month: Number(currentMonth + 1),
+          year: Number(currentYear),
+        },
+      });
+
+      // 🔹 Ambil nilai amount dengan aman
+      const budgetAmount = budget?.amount || 0;
+
+      const totalInflowAgg = await this.prismaService.flowLog.aggregate({
+        _sum: { amount: true },
+        where: { ...baseWhere, type: 'IN', categoryId: category.categoryId },
+      });
+      const totalInflow = totalInflowAgg._sum.amount || 0;
+
+      const totalOutflowAgg = await this.prismaService.flowLog.aggregate({
+        _sum: { amount: true },
+        where: { ...baseWhere, type: 'OUT', categoryId: category.categoryId },
+      });
+      const totalOutflow = totalOutflowAgg._sum.amount || 0;
+
+      const budgetSpent = totalInflow - totalOutflow;
+
+      // 🔹 Gunakan budgetAmount, bukan currentBudget
+      const budgetRemaining = budgetAmount - budgetSpent;
+
+      categoriesToBudget.push({
+        totalSpent: budgetSpent, // Biasanya spent itu total pengeluaran
+        budgetRemaining: budgetRemaining,
+        budget: budgetAmount,
+        name: category.name,
+      });
+    }
 
     // 🔹8. Bentuk response final (pertahankan field lama, tambah field baru)
     const analytics: AnalyticResponseDto = {
@@ -434,6 +471,7 @@ export class FlowLogService {
       budgetSpent,
       topCategories: categoriesWithNameRaw,
       topWarehouses,
+      categoriesToBudget,
       currentMonthBudget: currentBudget.amount,
       flowOverTime,
     };

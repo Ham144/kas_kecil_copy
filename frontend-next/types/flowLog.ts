@@ -108,6 +108,12 @@ export interface AnalyticResponseDto {
   topCategories: object[];
   topWarehouses: object[];
   currentMonthBudget: number;
+  categoriesToBudget: {
+    totalSpent: number;
+    budgetRemaining: number;
+    budget: number;
+    name: string;
+  }[];
   flowOverTime: object[];
 }
 

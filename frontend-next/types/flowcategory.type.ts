@@ -1,8 +1,11 @@
+import { Budget } from "./budget";
+
 export interface FlowCategoryResponse {
   id: string;
   no: string;
   name: string;
   description: string;
+  budgets?: Budget[];
 }
 
 export enum ModePeriod {
@@ -11,6 +14,7 @@ export enum ModePeriod {
 }
 
 export interface FlowCategoryCreate {
+  id?: string;
   name: string;
   description?: string;
   no: string;

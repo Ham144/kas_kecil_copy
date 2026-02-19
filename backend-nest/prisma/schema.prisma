@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   username        String @id
-  description String @default("unknown") //ini bebas
+  description String @default("kasir") //ini bebas
   role ROLE @default(KASIR) //ini yang menentukan RBAC
   isActive Boolean @default(true)
   displayName String
@@ -27,29 +27,24 @@ enum ROLE {
   IT
 }
 
-
 enum AuthMethod {
   LDAP
 } 
 
 model Warehouse {
-  id String @id @default(uuid())
-  name        String @unique
-  location    String?
-  description String?
-  budgets     Budget[]
-  flowLogs FlowLog[]
+  id        String     @id @default(uuid())
+  name String @unique
   members User[]
+  flowLogs  FlowLog[]
 }
 
-
 model Budget {
-  id         String   @id @default(uuid())
-  warehouseId String
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
-  month       Int
-  year        Int
-  amount      Float
+  id           String   @id @default(uuid())
+  categoryId   String
+  category     FlowLogCategory @relation(fields: [categoryId], references: [id])
+  month        Int
+  year         Int
+  amount       Float
 }
 
 model FlowLog {
@@ -63,9 +58,9 @@ model FlowLog {
   createdBy User @relation(fields: [createdByUsername], references: [username])
   warehouseId String
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  categories FlowLogCategory[]
   date DateTime @default(now()) 
   categoryId String
-  category FlowLogCategory @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now()) //no updateAt, bisa kacau
 }
 
@@ -77,9 +72,14 @@ enum FlowLogType {
 model FlowLogCategory {
   id String @id @default(uuid())
   no String @unique //account number
-  name String @unique
+  name String
   description String
+  budgets Budget[]
   flowLogs FlowLog[]
+  updatedAt DateTime @updatedAt() @default(now())
+  warehouseId String
+
+  @@unique([name, warehouseId])
 }
 
 model Globalsetting {
@@ -89,11 +89,6 @@ model Globalsetting {
   AD_DOMAIN String
   AD_BASE_DN String
 
-  SOAP_CUSTOMER_URL String
-  SOAP_CUSTOMER_SOAPACTION String 
-  SOAP_CUSTOMER_USERNAME String
-  SOAP_CUSTOMER_PASSWORD String
-  
   inUse Boolean @default(true)
   createdById String?
   createdBy User? @relation(fields: [createdById], references: [username]) 

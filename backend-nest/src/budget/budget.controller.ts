@@ -20,9 +20,9 @@ export class BudgetController {
     return this.budgetService.createBudget(body);
   }
 
-  @Get('/warehouse/:warehouseId')
-  getBudgetsByWarehouse(@Param('warehouseId') warehouseId: string) {
-    return this.budgetService.getBudgetsByWarehouse(warehouseId);
+  @Get('/category/:categoryId')
+  getBudgetsByWarehouse(@Param('categoryId') categoryId: string) {
+    return this.budgetService.getBudgetsByCategory(categoryId);
   }
 
   @Get(':id')
@@ -40,4 +40,3 @@ export class BudgetController {
     return this.budgetService.deleteBudget(id);
   }
 }
-

@@ -106,21 +106,6 @@ export function WarehouseModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground">
-              Location
-            </label>
-            <input
-              type="text"
-              value={formData.location ?? ""}
-              onChange={(e) => {
-                setFormData({ ...formData, location: e.target.value });
-              }}
-              placeholder="e.g., Jakarta"
-              className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground">
               Description
             </label>
             <textarea

@@ -31,3 +31,7 @@ setup biaya apa saja: parkir, BBM
 [x] add: filtering recent flow untuk "KASIR"
 [x] mod: perbaiki tampilan recent flow
 [x] fid: role: admin boleh get semua warehouse
+
+// remake ulang:
+[] add: category tidak berbagi tapi terkait dengan warehouse tertentu
+[] add: budget terkait ke category bukan warehouse, artinya 1 warehouse punya multi budget sejumlah category

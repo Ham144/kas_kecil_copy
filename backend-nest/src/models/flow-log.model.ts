@@ -37,6 +37,12 @@ export class AnalyticResponseDto {
   budgetSpent: number;
   topCategories: object[];
   topWarehouses: object[];
+  categoriesToBudget: {
+    totalSpent: number;
+    budgetRemaining: number;
+    budget: number;
+    name: string;
+  }[];
   currentMonthBudget: number;
   flowOverTime: object[];
 }
@@ -44,6 +50,7 @@ export class AnalyticResponseDto {
 export class GetAnalyticFilter {
   selectedDate: Date;
   selectedWarehouseId: string;
+  selectedCategoryId: string;
 }
 
 export class RecentFlowLogsFilter {

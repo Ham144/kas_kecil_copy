@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card } from "@radix-ui/themes";
@@ -45,9 +45,8 @@ export function RevenueForm({}: {}) {
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
     queryKey: ["flow-log-category"],
     queryFn: async () => {
-      const res = await axiosInstance.get<FlowCategoryResponse[]>(
-        "/flow-log-category"
-      );
+      const res =
+        await axiosInstance.get<FlowCategoryResponse[]>("/flow-log-category");
       return res.data;
     },
   });
@@ -55,7 +54,7 @@ export function RevenueForm({}: {}) {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -100,12 +99,12 @@ export function RevenueForm({}: {}) {
       },
       onSuccess: (data) => {
         // Invalidate and refetch queries
-        queryClient.invalidateQueries({ queryKey: ["recentInflows"] });
+        queryClient.invalidateQueries({ queryKey: ["recentOutflows"] });
         queryClient.invalidateQueries({ queryKey: ["flowLogs"] });
 
-        toast.success("revenue created successfully", {
+        toast.success("success", {
           description: `${data.title} - Rp ${data.amount.toLocaleString(
-            "id-ID"
+            "id-ID",
           )}`,
         });
 
@@ -134,7 +133,7 @@ export function RevenueForm({}: {}) {
 
     if (invalidFiles.length > 0) {
       toast.error(
-        `Some files are too large. Maximum size: ${maxFileSizeMB}MB per file`
+        `Some files are too large. Maximum size: ${maxFileSizeMB}MB per file`,
       );
       return;
     }

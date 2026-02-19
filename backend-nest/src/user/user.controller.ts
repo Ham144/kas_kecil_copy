@@ -40,7 +40,6 @@ export class UserController {
         res.cookie('refresh_token', response.refresh_token, refreshTokenOption);
         res.cookie('access_token', response.access_token, accessTokenOption);
       } else {
-        console.log('NO TOKENS TO SET - tokens are missing!');
       }
 
       // Hapus token dari response body

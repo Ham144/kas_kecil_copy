@@ -1,13 +1,13 @@
 export interface Budget {
   id: string;
-  warehouseId: string;
+  categoryId: string;
   month: number;
   year: number;
   amount: number;
 }
 
 export interface BudgetCreateDto {
-  warehouseId: string;
+  categoryId: string;
   month: number;
   year: number;
   amount: number;
@@ -19,4 +19,3 @@ export interface BudgetUpdateDto {
   year?: number;
   amount?: number;
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 import { Card } from "@radix-ui/themes";
 import {
@@ -34,6 +34,7 @@ import { ModePeriod } from "@/types/flowcategory.type";
 import { Role } from "@/types/role.type";
 import { WarehouseApi } from "@/api/warehouse";
 import { Warehouse } from "@/types/warehouse";
+import { toast } from "sonner";
 
 export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
@@ -41,7 +42,7 @@ export default function StatsPage() {
   const { userInfo } = useUserInfo();
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
   const [filter, setFilter] = useState<GetAnalyticFilter>({
-    selectedDate: `${new Date().getFullYear()}-${new Date().getMonth() + 1}`,
+    selectedDate: new Date().toISOString().split("T")[0],
     selectedWarehouseId: userInfo?.warehouseId,
   });
 
@@ -82,26 +83,38 @@ export default function StatsPage() {
     }).format(value);
   };
 
-  useEffect(() => {
-    setFilter((prevFilter) => ({
-      ...prevFilter,
-      selectedWarehouseId: "",
-    }));
-  }, [userInfo?.warehouseId]);
+  //untuk categoriesToBudget
+  const chartData = analytic?.categoriesToBudget.map((item) => ({
+    name: item.name,
+    spent: Math.abs(item.totalSpent), // Make positive for chart
+    remaining: item.budgetRemaining,
+    budget: item.budget,
+    // Calculate percentages if needed
+    spentPercent:
+      item.budget > 0 ? (Math.abs(item.totalSpent) / item.budget) * 100 : 0,
+    remainingPercent:
+      item.budget > 0 ? (item.budgetRemaining / item.budget) * 100 : 0,
+  }));
 
   useEffect(() => {
+    const today = new Date();
+
     if (modePeriod == ModePeriod.DATE) {
       setFilter((prevFilter) => ({
         ...prevFilter,
-        selectedDate: new Date().toISOString().split("T")[0],
+        selectedDate: today.toISOString().split("T")[0], // 2026-02-19 (format DATE)
       }));
     } else if (modePeriod == ModePeriod.MONTH) {
       setFilter((prevFilter) => ({
         ...prevFilter,
-        selectedDate: `${new Date().getFullYear()}-${
-          new Date().getMonth() + 1
-        }`,
+        selectedDate: today.toISOString().slice(0, 7), // 2026-02 (format MONTH)
       }));
+    } else {
+      toast("a");
+      setFilter({
+        selectedDate: today.toISOString().split("T")[0],
+        selectedWarehouseId: userInfo?.warehouseId,
+      });
     }
   }, [modePeriod]);
 
@@ -109,7 +122,96 @@ export default function StatsPage() {
     <div className="min-h-screen bg-background">
       <TopNavigation />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
+        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+          {isErrorAnalytic && (
+            <div role="alert" className="alert alert-error">
+              <FileWarningIcon />
+              <div className="flex flex-col gap-3">
+                {errors.map((error, index) => (
+                  <span key={index}>{error}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Filters Card */}
+          <Card className="mb-6 shadow-lg">
+            <div className="border-b border-border bg-card p-6">
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">
+                  Filters
+                </h2>
+              </div>
+            </div>
+
+            <div className="space-y-4 p-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* mode period  */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Periode Mode
+                  </label>
+                  <select
+                    value={modePeriod}
+                    onChange={(e) =>
+                      setModePeriod(e.target.value as ModePeriod)
+                    }
+                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {Object.values(ModePeriod).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Month Picker */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Month
+                  </label>
+                  <input
+                    type={modePeriod}
+                    value={filter.selectedDate}
+                    onChange={(e) =>
+                      setFilter((prev) => ({
+                        ...prev,
+                        selectedDate: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                {/* Warehouse Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Warehouse
+                  </label>
+                  <select
+                    value={filter.selectedWarehouseId}
+                    disabled={userInfo?.role != Role.ADMIN}
+                    onChange={(e) =>
+                      setFilter((prev) => ({
+                        ...prev,
+                        selectedWarehouseId: e.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="all">All Warehouses</option>
+                    {warehouses?.length &&
+                      warehouses.map((warehouse: Warehouse) => (
+                        <option key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <div className="mb-8 grid gap-4 md:grid-cols-3">
             {/* Total Spent Widget */}
             <Card className="shadow-lg border border-border">
@@ -232,94 +334,102 @@ export default function StatsPage() {
               </div>
             </Card>
           </div>
-          {isErrorAnalytic && (
-            <div role="alert" className="alert alert-error">
-              <FileWarningIcon />
-              <div className="flex flex-col gap-3">
-                {errors.map((error, index) => (
-                  <span key={index}>{error}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Filters Card */}
-          <Card className="mb-6 shadow-lg">
-            <div className="border-b border-border bg-card p-6">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">
-                  Filters
-                </h2>
-              </div>
-            </div>
 
-            <div className="space-y-4 p-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* mode period  */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Periode Mode
-                  </label>
-                  <select
-                    value={modePeriod}
-                    onChange={(e) =>
-                      setModePeriod(e.target.value as ModePeriod)
-                    }
-                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    {Object.values(ModePeriod).map((mode) => (
-                      <option key={mode} value={mode}>
-                        {mode}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Month Picker */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Month
-                  </label>
-                  <input
-                    type={modePeriod}
-                    value={filter.selectedDate}
-                    onChange={(e) =>
-                      setFilter((prev) => ({
-                        ...prev,
-                        selectedDate: e.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+          {/* Bar Partition */}
+          <div className="space-y-6 mt-8">
+            {analytic?.categoriesToBudget?.length ? (
+              analytic.categoriesToBudget.map((item, index) => (
+                <div key={index} className="space-y-2">
+                  {/* Header with category name and budget info */}
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm font-medium  tracking-wide">
+                      {item.name}
+                    </span>
+                    <div className="text-right">
+                      <span className="text-sm text-black">
+                        Rp {Math.abs(item.totalSpent).toLocaleString()}
+                      </span>
+                      <span className="text-xs text-black mx-1">/</span>
+                      <span className="text-sm font-semibold ">
+                        Rp {item.budget.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
 
-                {/* Warehouse Dropdown */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground">
-                    Warehouse
-                  </label>
-                  <select
-                    value={filter.selectedWarehouseId}
-                    disabled={userInfo?.role != Role.ADMIN}
-                    onChange={(e) =>
-                      setFilter((prev) => ({
-                        ...prev,
-                        selectedWarehouseId: e.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="all">All Warehouses</option>
-                    {warehouses?.length &&
-                      warehouses.map((warehouse: Warehouse) => (
-                        <option key={warehouse.id} value={warehouse.id}>
-                          {warehouse.name}
-                        </option>
-                      ))}
-                  </select>
+                  {/* Progress bar container */}
+                  <div className="relative w-full h-10 bg-gray-900 rounded-lg overflow-hidden flex shadow-inner">
+                    {/* Spent portion - red with pattern/opacity for visual interest */}
+                    <div
+                      className="bg-gradient-to-r from-red-500 to-red-400 h-full flex items-center justify-end px-2 text-xs font-medium  transition-all duration-300"
+                      style={{
+                        width: `${item.budget > 0 ? (Math.abs(item.totalSpent) / item.budget) * 100 : 0}%`,
+                      }}
+                    >
+                      {item.budget > 0 &&
+                        (Math.abs(item.totalSpent) / item.budget) * 100 >
+                          15 && (
+                          <span>
+                            {Math.round(
+                              (Math.abs(item.totalSpent) / item.budget) * 100,
+                            )}
+                            %
+                          </span>
+                        )}
+                    </div>
+
+                    {/* Remaining portion - green with subtle gradient */}
+                    <div
+                      className="bg-gradient-to-r from-green-500 to-green-400 h-full flex items-center px-2 text-xs font-medium  transition-all duration-300"
+                      style={{
+                        width: `${item.budget > 0 ? (item.budgetRemaining / item.budget) * 100 : 100}%`,
+                      }}
+                    >
+                      {item.budget > 0 &&
+                        (item.budgetRemaining / item.budget) * 100 > 15 && (
+                          <span>
+                            {Math.round(
+                              (item.budgetRemaining / item.budget) * 100,
+                            )}
+                            %
+                          </span>
+                        )}
+                    </div>
+                  </div>
+
+                  {/* Footer with detailed breakdown */}
+                  <div className="flex justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-black">
+                        Spent:{" "}
+                        <span className="text-black font-medium">
+                          Rp {Math.abs(item.totalSpent).toLocaleString()}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-black">
+                        Remaining:{" "}
+                        <span className="text-black font-medium">
+                          Rp {item.budgetRemaining.toLocaleString()}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Subtle divider between items */}
+                  {index < analytic.categoriesToBudget.length - 1 && (
+                    <div className="border-b border-gray-800 mt-4"></div>
+                  )}
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-black text-sm">No budget data available</p>
               </div>
-            </div>
-          </Card>
+            )}
+          </div>
 
           {/* Charts Grid */}
           <div className="grid gap-6 md:grid-cols-2">
@@ -353,7 +463,7 @@ export default function StatsPage() {
                               key={`cell-${index}`}
                               fill={COLORS[index % COLORS.length]}
                             />
-                          )
+                          ),
                         )}
                       </Pie>
                       <Tooltip

@@ -14,8 +14,6 @@ export default function RevenuePage() {
   const {
     data: recentOutflows,
     isLoading: isLoadingRevenue,
-    isError: isrevenueError,
-    error: revenueError,
     refetch: refetchRevenue,
   } = useQuery({
     queryKey: ["recentOutflows", FlowLogType.IN],

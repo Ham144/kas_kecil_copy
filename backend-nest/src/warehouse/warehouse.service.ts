@@ -1,4 +1,5 @@
 import {
+  HttpException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -86,7 +87,6 @@ export class WarehouseService {
       data,
       include: {
         members: true,
-        budgets: true,
       },
     });
 
@@ -137,7 +137,6 @@ export class WarehouseService {
       data,
       include: {
         members: true,
-        budgets: true,
       },
     });
 
@@ -176,7 +175,6 @@ export class WarehouseService {
       where,
       include: {
         members: true,
-        budgets: true,
       },
       orderBy: {
         name: 'asc',
@@ -185,25 +183,53 @@ export class WarehouseService {
 
     return warehouses.map((warehouse) => this.mapWarehouse(warehouse));
   }
-
   async deleteWarehouse(id: string): Promise<SimpleSuccess> {
-    try {
-      const result = await this.prismaService.warehouse.deleteMany({
-        where: { id },
+    return await this.prismaService
+      .$transaction(async (tx) => {
+        // 1. Cek dulu apakah gudangnya ada?
+        const warehouse = await tx.warehouse.findUnique({
+          where: { id },
+          include: {
+            // Ambil kategori lewat flowLogs untuk hapus budget
+            flowLogs: { include: { category: true } },
+          },
+        });
+
+        if (!warehouse) {
+          throw new NotFoundException('Warehouse tidak ditemukan');
+        }
+
+        // 2. Kumpulkan ID kategori yang bersangkutan
+        const categoryIds = warehouse.flowLogs.map((log) => log.category.id);
+
+        // 3. Eksekusi hapus berurutan (Anak -> Bapak)
+        if (categoryIds.length > 0) {
+          await tx.budget.deleteMany({
+            where: { categoryId: { in: categoryIds } },
+          });
+        }
+
+        await tx.flowLog.deleteMany({
+          where: { warehouseId: id },
+        });
+
+        await tx.warehouse.delete({
+          where: { id },
+        });
+
+        return {
+          message: 'Warehouse dan data terkait berhasil dihapus',
+          statusCode: 200,
+        };
+      })
+      .catch((error) => {
+        // Jika error sudah berupa NestJS Exception (seperti NotFound), lempar lagi saja
+        if (error instanceof HttpException) throw error;
+
+        console.error('Delete error:', error);
+        throw new InternalServerErrorException(
+          'Gagal menghapus warehouse karena masalah sistem',
+        );
       });
-
-      if (result.count === 0) {
-        throw new NotFoundException('Warehouse tidak ditemukan');
-      }
-
-      return {
-        message: 'Warehouse berhasil dihapus',
-        statusCode: 200,
-      };
-    } catch (error) {
-      // Prisma error misalnya invalid id, connection issue, dsb
-      console.error('Delete error:', error);
-      throw new InternalServerErrorException('Gagal menghapus warehouse');
-    }
   }
 }

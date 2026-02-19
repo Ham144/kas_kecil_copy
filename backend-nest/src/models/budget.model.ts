@@ -1,13 +1,13 @@
 export class BudgetResponseDto {
   id: string;
-  warehouseId: string;
+  categoryId: string;
   month: number;
   year: number;
   amount: number;
 }
 
 export class BudgetCreateDto {
-  warehouseId: string;
+  categoryId: string;
   month: number;
   year: number;
   amount: number;
@@ -19,4 +19,3 @@ export class BudgetUpdateDto {
   year?: number;
   amount?: number;
 }
-

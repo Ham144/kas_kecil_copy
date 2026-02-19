@@ -14,14 +14,14 @@ import * as jwt from 'jsonwebtoken';
 import { TokenPayload } from 'src/models/tokenPayload.model';
 import { RedisService } from 'src/redis/redis.service';
 import { randomUUID } from 'crypto';
-import { ROLE, User } from '@prisma/client';
+import { Prisma, ROLE } from '@prisma/client';
 
 @Injectable()
 export class UserService {
   constructor(
-    private validationService: ValidationService,
-    private prismaService: PrismaService,
-    private redis: RedisService,
+    private readonly validationService: ValidationService,
+    private readonly prismaService: PrismaService,
+    private readonly redis: RedisService,
   ) {}
 
   async loginUser(
@@ -105,7 +105,7 @@ export class UserService {
         //rumah baru - upsert warehouse dulu
         let newWarehouse = await this.prismaService.warehouse.upsert({
           where: {
-            name: warehouseName,
+            id: warehouseId,
           },
           update: {
             members: {
@@ -135,10 +135,14 @@ export class UserService {
         },
       });
     } else {
+      let where: Prisma.WarehouseWhereUniqueInput = {
+        name: userLDAP['physicalDeliveryOfficeName'],
+      };
+
       const transactionResult = await this.prismaService.$transaction(
         async (tx) => {
           const warehouse = await tx.warehouse.upsert({
-            where: { name: warehouseName },
+            where,
             update: {},
             create: {
               name: warehouseName,

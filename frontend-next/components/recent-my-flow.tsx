@@ -4,7 +4,6 @@ import {
   Building,
   Calendar,
   CreditCard,
-  Download,
   FileText,
   ImageIcon,
   MoreVertical,
@@ -116,7 +115,7 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[]; type: FlowLogType }) {
                               : "bg-red-100 text-red-800 border border-red-200"
                           }`}
                         >
-                          {isIncome ? "PENDAPATAN" : "PENGELUARAN"}
+                          {isIncome ? "PEMASUKAN" : "PENGELUARAN"}
                         </span>
                       </div>
 
@@ -185,13 +184,6 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[]; type: FlowLogType }) {
                           Dibuat: {formatDateTime(expense.createdAt)}
                         </div>
                       </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -220,8 +212,8 @@ export function RecentMyFlow({ logs }: { logs: FlowLog[]; type: FlowLogType }) {
                 logs.reduce(
                   (sum, log) =>
                     sum + (log.type === "IN" ? log.amount : -log.amount),
-                  0
-                )
+                  0,
+                ),
               )}
             </div>
             <div className="text-xs text-gray-500">Saldo Bersih</div>

@@ -24,6 +24,8 @@ import {
   ImageIcon,
   ExternalLink,
   AlertCircle,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { TopNavigation } from "../../../components/top-navigation";
 import { Card } from "@radix-ui/themes";
@@ -391,7 +393,9 @@ export default function CashFlow() {
                   </thead>
                   <tbody>
                     {flows?.logs.length === 0 ? (
-                      <div>No expenses found matching your filters</div>
+                      <div className="text-center text-lg font-semibold text-muted-foreground">
+                        No expenses found matching your filters
+                      </div>
                     ) : (
                       flows?.logs &&
                       flows?.logs.length > 0 &&
@@ -404,7 +408,7 @@ export default function CashFlow() {
                               setSelectedLog(log);
                               (
                                 document.getElementById(
-                                  "log-modal-detail"
+                                  "log-modal-detail",
                                 ) as HTMLDialogElement
                               )?.showModal();
                             }}
@@ -484,20 +488,7 @@ export default function CashFlow() {
                 }
                 aria-label="Halaman Sebelumnya"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
+                <ArrowLeft />
                 <span className="hidden sm:inline">Sebelumnya</span>
               </button>
 
@@ -612,20 +603,7 @@ export default function CashFlow() {
                 aria-label="Halaman Selanjutnya"
               >
                 <span className="hidden sm:inline">Berikutnya</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                <ArrowRight />
               </button>
             </div>
           </div>
@@ -865,7 +843,7 @@ export default function CashFlow() {
                     {selectedLog.attachments.map((attachment, index) => {
                       const attachmentUrl = getAttachmentUrl(attachment);
                       const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(
-                        attachment
+                        attachment,
                       );
 
                       return (

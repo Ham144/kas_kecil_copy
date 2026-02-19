@@ -1,19 +1,15 @@
 import axiosInstance from "@/lib/axios";
-import type {
-  Budget,
-  BudgetCreateDto,
-  BudgetUpdateDto,
-} from "@/types/budget";
+import type { Budget, BudgetCreateDto, BudgetUpdateDto } from "@/types/budget";
 
 export const BudgetApi = {
   createBudget: async (data: BudgetCreateDto): Promise<Budget> => {
-    const response = await axiosInstance.post<Budget>("/api/budget", data);
+    const response = await axiosInstance.post("/api/budget", data);
     return response.data;
   },
 
-  getBudgetsByWarehouse: async (warehouseId: string): Promise<Budget[]> => {
+  getBudgetsByCategory: async (categoryId: string): Promise<Budget[]> => {
     const response = await axiosInstance.get<Budget[]>(
-      `/api/budget/warehouse/${warehouseId}`,
+      `/api/budget/category/${categoryId}`,
     );
     return response.data;
   },
@@ -35,4 +31,3 @@ export const BudgetApi = {
     await axiosInstance.delete(`/api/budget/${id}`);
   },
 };
-

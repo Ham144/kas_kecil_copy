@@ -17,7 +17,7 @@ import type {
 export default function WarehousePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(
-    null
+    null,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
@@ -97,7 +97,7 @@ export default function WarehousePage() {
   const handleDeleteWarehouse = (id: string) => {
     if (
       window.confirm(
-        "Are you sure you want to delete this warehouse? This action cannot be undone."
+        "Are you sure you want to delete this warehouse? This action cannot be undone.",
       )
     ) {
       deleteMutation.mutate(id);
@@ -136,7 +136,7 @@ export default function WarehousePage() {
     return warehouses.filter((warehouse) =>
       [warehouse.name, warehouse.location, warehouse.description]
         .filter(Boolean)
-        .some((field) => field!.toLowerCase().includes(keyword))
+        .some((field) => field!.toLowerCase().includes(keyword)),
     );
   }, [warehouses, searchQuery]);
 
@@ -164,7 +164,7 @@ export default function WarehousePage() {
               Warehouse Setup
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Manage your warehouse locations and budgets
+              Manage your warehouse locations and categories
             </p>
           </div>
 

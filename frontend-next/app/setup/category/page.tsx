@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Edit2 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
-import { Button, Card } from "@radix-ui/themes";
+import { Button } from "@radix-ui/themes";
 import { TopNavigation } from "../../../components/top-navigation";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,10 +12,15 @@ import type {
   FlowCategoryCreate,
   FlowCategoryResponse,
 } from "@/types/flowcategory.type";
+import { CategoryTable } from "@/components/CategoryTable";
+import { FlowLogCategoryApi } from "@/api/category.api";
 
 export default function CategorySetupPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Deklarasikan state yang hilang
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] =
@@ -26,6 +30,15 @@ export default function CategorySetupPage() {
     description: "",
     no: "",
   });
+
+  const { mutateAsync: handleCreateCategory, isPending: creatingCategory } =
+    useMutation({
+      mutationKey: ["flow-log-category"],
+      mutationFn: async () => FlowLogCategoryApi.create(formValues),
+      onError: (err: any) => {
+        toast.error(err.response?.data?.message);
+      },
+    });
 
   const resetForm = () => {
     setFormValues({ name: "", description: "", no: "" });
@@ -39,25 +52,18 @@ export default function CategorySetupPage() {
     }
   };
 
-  const {
-    data: categories = [],
-    isLoading,
-    isFetching,
-  } = useQuery<FlowCategoryResponse[]>({
-    queryKey: ["flow-log-category"],
-    queryFn: async () => {
-      const res = await axiosInstance.get<FlowCategoryResponse[]>(
-        "/flow-log-category"
-      );
-      return res.data;
+  const { data: categories = [], isLoading } = useQuery<FlowCategoryResponse[]>(
+    {
+      queryKey: ["flow-log-category"],
+      queryFn: async () => FlowLogCategoryApi.showAll(),
     },
-  });
+  );
 
   const createCategoryMutation = useMutation({
     mutationFn: async (body: FlowCategoryCreate) => {
       const res = await axiosInstance.post<FlowCategoryResponse>(
         "/flow-log-category",
-        body
+        body,
       );
       return res.data;
     },
@@ -85,7 +91,7 @@ export default function CategorySetupPage() {
     }) => {
       const res = await axiosInstance.patch<FlowCategoryResponse>(
         `/flow-log-category/${id}`,
-        body
+        body,
       );
       return res.data;
     },
@@ -104,9 +110,7 @@ export default function CategorySetupPage() {
   });
 
   const deleteCategoryMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await axiosInstance.delete(`/flow-log-category/${id}`);
-    },
+    mutationFn: async (id: string) => await FlowLogCategoryApi.delete(id),
     onSuccess: () => {
       toast.success("Category deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["flow-log-category"] });
@@ -119,6 +123,16 @@ export default function CategorySetupPage() {
       toast.error(errorMessage);
     },
   });
+
+  const handleEditCategory = (category: FlowCategoryResponse) => {
+    setEditingCategory(category);
+    setFormValues({
+      name: category.name,
+      no: category.no,
+      description: category.description || "",
+    });
+    setIsDialogOpen(true);
+  };
 
   const isSubmitting =
     createCategoryMutation.isPending || updateCategoryMutation.isPending;
@@ -144,36 +158,15 @@ export default function CategorySetupPage() {
     }
   };
 
-  const handleEditCategory = (category: FlowCategoryResponse) => {
-    setEditingCategory(category);
-    setFormValues({
-      name: category.name ?? "",
-      no: category.no ?? "",
-      description: category.description ?? "",
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleDeleteCategory = (category: FlowCategoryResponse) => {
-    const confirmed = window.confirm(`Hapus category "${category.name}"?`);
-    if (!confirmed) return;
-    deleteCategoryMutation.mutate(category.id);
-  };
-
-  const handleOpenCreateDialog = () => {
-    resetForm();
-    setIsDialogOpen(true);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <TopNavigation />
-      <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
-        <div className="mb-8 flex items-center justify-between">
+      <main className="flex-1">
+        <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
           <div className="mb-8">
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <span
-                className="cursor-pointer"
+                className="cursor-pointer "
                 onClick={() => {
                   router.push("/setup");
                 }}
@@ -181,80 +174,41 @@ export default function CategorySetupPage() {
                 Setup
               </span>
               <span>/</span>
-              <span className="font-medium text-foreground">category</span>
+              <span className="text-foreground font-medium">Warehouse</span>
             </div>
+
             <h1 className="text-3xl font-semibold text-foreground">
-              Expense Category Setup
+              Warehouse Setup
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Create and manage expense categories for your warehouse
+              Manage your warehouse locations and categories
             </p>
           </div>
-          <Button
-            onClick={handleOpenCreateDialog}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Add Category
-          </Button>
-        </div>
 
-        <Card className="shadow-lg">
-          <div className="divide-y divide-border">
-            {isLoading || isFetching ? (
-              <div className="p-8 text-center text-muted-foreground">
-                Loading categories...
-              </div>
-            ) : categories.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">
-                  No categories yet. Create one to get started.
-                </p>
-              </div>
-            ) : (
-              categories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
-                      {category.name}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {category.no}
-                    </span>
-                    {category.description ? (
-                      <span className="text-sm text-muted-foreground">
-                        {category.description}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="2"
-                      onClick={() => handleEditCategory(category)}
-                      className="gap-2 text-muted-foreground hover:text-foreground"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="2"
-                      onClick={() => handleDeleteCategory(category)}
-                      className="gap-2 text-destructive hover:bg-destructive/10"
-                      disabled={deleteCategoryMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      </div>
+          {creatingCategory ? (
+            <span className="loading loading-ring loading-lg"></span>
+          ) : (
+            <CategoryTable
+              categories={categories}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onEdit={handleEditCategory} // <-- GANTI dengan handleEditCategory
+              onDelete={(id: string) => deleteCategoryMutation.mutate(id)}
+              isOpenModalDialog={isDialogOpen}
+              setIsOpenModalDialog={handleDialogChange}
+              isCreating={isSubmitting}
+            />
+          )}
+
+          {isLoading && (
+            <div className="mt-4 flex items-center justify-center py-8">
+              <span className="text-sm text-muted-foreground">
+                Loading warehouses...
+              </span>
+            </div>
+          )}
+        </div>
+      </main>
 
       <Dialog.Root open={isDialogOpen} onOpenChange={handleDialogChange}>
         <Dialog.Portal>

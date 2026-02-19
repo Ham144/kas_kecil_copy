@@ -44,7 +44,7 @@ export const FlowLogApi = {
   },
 
   getAnalytic: async (
-    filter: GetAnalyticFilter
+    filter: GetAnalyticFilter,
   ): Promise<AnalyticResponseDto> => {
     const params = new URLSearchParams();
     params.set("selectedDate", filter.selectedDate);

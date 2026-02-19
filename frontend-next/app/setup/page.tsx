@@ -14,15 +14,15 @@ export default function SetupPage() {
       color: "bg-blue-500/10 text-blue-600",
     },
     {
-      title: "Setup Expense Category",
-      description: "Create and manage expense categories",
+      title: "Setup Category",
+      description: "Create and manage your warehouse's categories",
       icon: Tag,
       href: "/setup/category",
       color: "bg-purple-500/10 text-purple-600",
     },
     {
       title: "Manage Accounts",
-      description: "Manage user accounts and permissions",
+      description: "Manage warehouse memebers and roles",
       icon: Users,
       href: "/setup/accounts",
       color: "bg-green-500/10 text-green-600",
