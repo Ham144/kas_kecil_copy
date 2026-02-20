@@ -9,4 +9,5 @@ export class flowCategoryCreateDto {
   name: string;
   description?: string;
   no: string;
+  warehouseId: string;
 }

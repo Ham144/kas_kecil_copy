@@ -19,8 +19,6 @@ async function bootstrap() {
 
     // Enable cookie parser
     app.use(cookieParser());
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('FRONTEND_URL_PROD:', process.env.FRONTEND_URL_PROD);
 
     // Enable CORS
     app.enableCors({

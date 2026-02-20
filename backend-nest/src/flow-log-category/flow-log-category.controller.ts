@@ -6,11 +6,14 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { FlowLogCategoryService } from './flow-log-category.service';
 import { flowCategoryCreateDto } from 'src/models/flow-category.model';
+import { Auth } from 'src/common/auth.decorator';
+import { TokenPayload } from 'src/models/tokenPayload.model';
 
-@Controller('flow-log-category')
+@Controller('/api/flow-log-category')
 export class FlowLogCategoryController {
   constructor(
     private readonly flowLogCategoryService: FlowLogCategoryService,
@@ -22,8 +25,8 @@ export class FlowLogCategoryController {
   }
 
   @Get()
-  findAll() {
-    return this.flowLogCategoryService.findAll();
+  findAll(@Query() filter) {
+    return this.flowLogCategoryService.findAll(filter);
   }
 
   @Get(':id')

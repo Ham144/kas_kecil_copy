@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -54,7 +56,6 @@ export class WarehouseService {
     return {
       id: entity.id,
       name: entity.name,
-      location: entity.location,
       description: entity.description,
       members: entity.members?.map((member) => member.username) ?? [],
       budgetsCount: entity.budgets?.length ?? 0,
@@ -64,33 +65,41 @@ export class WarehouseService {
   async createWarehouse(
     body: WarehouseCreateDto,
   ): Promise<WarehouseResponseDto> {
-    const validWarehouse = (await this.validationService.validate(
-      WarehouseValidation.CREATE,
-      body,
-    )) as WarehouseCreateDto;
+    try {
+      const validWarehouse = (await this.validationService.validate(
+        WarehouseValidation.CREATE,
+        body,
+      )) as WarehouseCreateDto;
 
-    const memberConnections = await this.resolveMembers(validWarehouse.members);
+      const memberConnections = await this.resolveMembers(
+        validWarehouse.members,
+      );
 
-    const data: any = {
-      name: validWarehouse.name,
-      location: validWarehouse.location ?? null,
-      description: validWarehouse.description ?? null,
-    };
-
-    if (memberConnections.length > 0) {
-      data.members = {
-        connect: memberConnections,
+      const data: any = {
+        name: validWarehouse.name,
+        description: validWarehouse.description ?? null,
       };
+
+      if (memberConnections.length > 0) {
+        data.members = {
+          connect: memberConnections,
+        };
+      }
+
+      const warehouse = await this.prismaService.warehouse.create({
+        data,
+        include: {
+          members: true,
+        },
+      });
+
+      return this.mapWarehouse(warehouse);
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Nama Warehouse sudah ada', error);
+      }
+      throw new BadRequestException(error.message);
     }
-
-    const warehouse = await this.prismaService.warehouse.create({
-      data,
-      include: {
-        members: true,
-      },
-    });
-
-    return this.mapWarehouse(warehouse);
   }
 
   async updateWarehouse(
@@ -106,10 +115,6 @@ export class WarehouseService {
 
     if (validWarehouse.name !== undefined) {
       data.name = validWarehouse.name;
-    }
-
-    if (validWarehouse.location !== undefined) {
-      data.location = validWarehouse.location || null;
     }
 
     if (validWarehouse.description !== undefined) {
@@ -149,7 +154,7 @@ export class WarehouseService {
   ): Promise<WarehouseResponseDto[]> {
     let where: any = {};
 
-    if (userInfo.role === ROLE.ADMIN) {
+    if (userInfo.role === ROLE.IT || userInfo.role === ROLE.ADMIN) {
       // Bentuk where dasar
       where = {
         ...(searchKey && {
@@ -162,7 +167,7 @@ export class WarehouseService {
     }
 
     // Jika bukan superadmin, tampilkan hanya warehouse miliknya
-    if (userInfo.role !== ROLE.ADMIN) {
+    if (userInfo.role !== ROLE.IT && userInfo.role !== ROLE.ADMIN) {
       where.members = {
         some: {
           username: userInfo.username,
@@ -191,7 +196,7 @@ export class WarehouseService {
           where: { id },
           include: {
             // Ambil kategori lewat flowLogs untuk hapus budget
-            flowLogs: { include: { category: true } },
+            flowLogs: { include: { warehouse: true } },
           },
         });
 
@@ -200,7 +205,7 @@ export class WarehouseService {
         }
 
         // 2. Kumpulkan ID kategori yang bersangkutan
-        const categoryIds = warehouse.flowLogs.map((log) => log.category.id);
+        const categoryIds = warehouse.flowLogs.map((log) => log.categoryId);
 
         // 3. Eksekusi hapus berurutan (Anak -> Bapak)
         if (categoryIds.length > 0) {

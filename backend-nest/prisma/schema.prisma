@@ -33,6 +33,7 @@ enum AuthMethod {
 
 model Warehouse {
   id        String     @id @default(uuid())
+  description String?
   name String @unique
   members User[]
   flowLogs  FlowLog[]
@@ -58,22 +59,17 @@ model FlowLog {
   createdBy User @relation(fields: [createdByUsername], references: [username])
   warehouseId String
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
-  categories FlowLogCategory[]
   date DateTime @default(now()) 
   categoryId String
+  category FlowLogCategory @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now()) //no updateAt, bisa kacau
-}
-
-enum FlowLogType {
-  IN
-  OUT
 }
 
 model FlowLogCategory {
   id String @id @default(uuid())
-  no String @unique //account number
+  no String
   name String
-  description String
+  description String?
   budgets Budget[]
   flowLogs FlowLog[]
   updatedAt DateTime @updatedAt() @default(now())
@@ -82,10 +78,17 @@ model FlowLogCategory {
   @@unique([name, warehouseId])
 }
 
+
+enum FlowLogType {
+  IN
+  OUT
+}
+
 model Globalsetting {
   settingName String @id @default(uuid())
   AD_HOST String
   AD_PORT String
+  
   AD_DOMAIN String
   AD_BASE_DN String
 

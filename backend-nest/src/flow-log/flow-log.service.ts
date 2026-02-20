@@ -319,17 +319,42 @@ export class FlowLogService {
     const totalOutflow = totalOutflowAgg._sum.amount || 0;
 
     // 🔹3. Top 5 Categories (by sum amount OUT)
-    const topCategories = await this.prismaService.flowLog.groupBy({
+    const topCategoriesInOut = await this.prismaService.flowLog.groupBy({
       by: ['categoryId'],
       _sum: { amount: true },
       where: { ...baseWhere },
       orderBy: { _sum: { amount: 'desc' } },
-      take: 5,
+      take: 10,
+    });
+
+    const topCategoriesExpense = await this.prismaService.flowLog.groupBy({
+      by: ['categoryId'],
+      _sum: { amount: true },
+      where: { ...baseWhere, type: 'OUT' },
+      orderBy: { _sum: { amount: 'desc' } },
+      take: 10,
     });
 
     // Ambil detail nama kategori (biar output lebih bagus)
     const categoriesWithNameRaw = await Promise.all(
-      topCategories.map(async (c) => {
+      topCategoriesExpense.map(async (c) => {
+        const category = await this.prismaService.flowLogCategory.findUnique({
+          where: { id: c.categoryId },
+        });
+        const amount = c._sum.amount || 0;
+        return {
+          categoryId: c.categoryId,
+          categoryName: category?.name || 'Unknown',
+          name: category?.name || 'Unknown',
+          total: amount,
+          amount, // for BarChart dataKey="amount"
+          value: amount, // for PieChart dataKey="value"
+        };
+      }),
+    );
+
+    const categoriesWithNameRawAll = await Promise.all(
+      topCategoriesInOut.map(async (c) => {
         const category = await this.prismaService.flowLogCategory.findUnique({
           where: { id: c.categoryId },
         });
@@ -368,25 +393,44 @@ export class FlowLogService {
     );
 
     // 🔹5. Budget
-    const currentBudget =
-      selectedWarehouseId === 'all'
-        ? { amount: 0 }
-        : await this.prismaService.budget.findFirst({
-            where: {
-              ...(selectedWarehouseId !== 'all' && {
-                categoryId: selectedCategoryId,
-              }),
-              month: Number(currentMonth + 1),
-              year: Number(currentYear),
-            },
-          });
+    const currentBudget = {
+      amount: 0,
+    };
+    let totalBudgetAmount = 0;
+
+    const budgetFilter: any = {
+      month: Number(currentMonth + 1),
+      year: Number(currentYear),
+    };
+
+    // Jika bukan 'all', tambahkan filter berdasarkan warehouseId melalui relasi category
+    if (selectedWarehouseId !== 'all') {
+      budgetFilter.category = {
+        warehouseId: selectedWarehouseId,
+      };
+    }
+
+    const result = await this.prismaService.budget.aggregate({
+      _sum: {
+        amount: true,
+      },
+      where: budgetFilter,
+    });
+
+    totalBudgetAmount = result._sum.amount || 0;
 
     if (typeof currentBudget?.amount !== 'number')
       throw new NotFoundException(
-        `Budget warehouse dipilih untuk bulan ${currentMonth + 1} belum dibuat. Silahkan setup terlebih dahulu`,
+        `Budget category pada warehouse dipilih untuk bulan ${currentMonth + 1} belum dibuat. Silahkan setup terlebih dahulu`,
       );
 
-    const budgetSpent = totalInflow - totalOutflow;
+    // Hitung selisih murni (net flow)
+    const netFlow = totalInflow - totalOutflow;
+
+    // Jika netFlow negatif (misal -4.5jt), berarti ada pengeluaran bersih.
+    // Kita ubah jadi positif agar bisa mengurangi budgetAmount.
+    const budgetSpent = Math.abs(netFlow);
+
     const budgetRemaining = currentBudget.amount - budgetSpent;
 
     // 🔹6. Daily line data/ flow over time (OUT &IN)
@@ -425,8 +469,9 @@ export class FlowLogService {
       },
       [] as { date: string; IN?: number; OUT?: number }[],
     );
+
     const categoriesToBudget = [];
-    for (const category of categoriesWithNameRaw) {
+    for (const category of categoriesWithNameRawAll) {
       const budget = await this.prismaService.budget.findFirst({
         where: {
           categoryId: category.categoryId,
@@ -449,14 +494,20 @@ export class FlowLogService {
         where: { ...baseWhere, type: 'OUT', categoryId: category.categoryId },
       });
       const totalOutflow = totalOutflowAgg._sum.amount || 0;
+      // 1. Total Pengeluaran murni (inilah yang benar-benar 'spent')
+      const budgetSpent = totalOutflow;
 
-      const budgetSpent = totalInflow - totalOutflow;
+      // 2. Net Flow (Selisih pemasukan dan pengeluaran di kategori tersebut)
+      // Jika Inflow > Outflow, hasilnya positif. Jika sebaliknya, negatif.
+      const netEffect = totalInflow - totalOutflow;
 
-      // 🔹 Gunakan budgetAmount, bukan currentBudget
-      const budgetRemaining = budgetAmount - budgetSpent;
+      // 3. Sisa Budget
+      // Budget awal ditambah dengan net effect (masuk dikurang keluar)
+      const budgetRemaining = budgetAmount + netEffect;
 
       categoriesToBudget.push({
-        totalSpent: budgetSpent, // Biasanya spent itu total pengeluaran
+        totalSpent: budgetSpent, // Realita pengeluaran
+        totalInflow: totalInflow, // Opsional: untuk tracking pemasukan di kategori itu
         budgetRemaining: budgetRemaining,
         budget: budgetAmount,
         name: category.name,
@@ -472,7 +523,7 @@ export class FlowLogService {
       topCategories: categoriesWithNameRaw,
       topWarehouses,
       categoriesToBudget,
-      currentMonthBudget: currentBudget.amount,
+      currentMonthBudget: totalBudgetAmount,
       flowOverTime,
     };
 

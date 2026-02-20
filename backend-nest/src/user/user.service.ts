@@ -36,12 +36,19 @@ export class UserService {
 
     // Cek apakah globalSetting ada
     if (!globalSetting) {
-      return {
-        statusCode: 500,
-        message:
-          'Global setting tidak ditemukan. Silakan setup konfigurasi LDAP terlebih dahulu.',
-        error: 'GLOBAL_SETTING_NOT_FOUND',
-      };
+      await this.prismaService.globalsetting.create({
+        data: {
+          inUse: true,
+          AD_HOST: process.env.AD_HOST,
+          AD_PORT: process.env.AD_PORT,
+          AD_DOMAIN: process.env.AD_DOMAIN,
+          AD_BASE_DN: process.env.AD_BASE_DN,
+        },
+      });
+
+      return new BadRequestException(
+        'Global setting initialization success. Silakan login ulang.',
+      );
     }
 
     //LDAP/ AD

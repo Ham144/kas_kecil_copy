@@ -15,6 +15,7 @@ export enum ModePeriod {
 
 export interface FlowCategoryCreate {
   id?: string;
+  warehouseId?: string;
   name: string;
   description?: string;
   no: string;

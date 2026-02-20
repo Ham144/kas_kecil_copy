@@ -43,7 +43,7 @@ export default function StatsPage() {
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
   const [filter, setFilter] = useState<GetAnalyticFilter>({
     selectedDate: new Date().toISOString().split("T")[0],
-    selectedWarehouseId: userInfo?.warehouseId,
+    selectedWarehouseId: userInfo?.warehouseId || "all",
   });
 
   const { data: warehouses } = useQuery({
@@ -82,19 +82,6 @@ export default function StatsPage() {
       maximumFractionDigits: 0,
     }).format(value);
   };
-
-  //untuk categoriesToBudget
-  const chartData = analytic?.categoriesToBudget.map((item) => ({
-    name: item.name,
-    spent: Math.abs(item.totalSpent), // Make positive for chart
-    remaining: item.budgetRemaining,
-    budget: item.budget,
-    // Calculate percentages if needed
-    spentPercent:
-      item.budget > 0 ? (Math.abs(item.totalSpent) / item.budget) * 100 : 0,
-    remainingPercent:
-      item.budget > 0 ? (item.budgetRemaining / item.budget) * 100 : 0,
-  }));
 
   useEffect(() => {
     const today = new Date();
@@ -190,7 +177,7 @@ export default function StatsPage() {
                   </label>
                   <select
                     value={filter.selectedWarehouseId}
-                    disabled={userInfo?.role != Role.ADMIN}
+                    disabled={userInfo?.role == Role.KASIR}
                     onChange={(e) =>
                       setFilter((prev) => ({
                         ...prev,
@@ -241,7 +228,7 @@ export default function StatsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      sisa terhadapat pencapaian
+                      sisa terhadap pencapaian
                     </p>
                     <p className="font-medium text-muted-foreground text-xs">
                       "current month budget" - "budget spent"
@@ -252,10 +239,8 @@ export default function StatsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       dari budget{" "}
                       <span className="badge font-bold">
-                        {analytic?.currentMonthBudget == 0
-                          ? "tentukan warehouse"
-                          : "Rp. " +
-                            formatCurrency(analytic?.currentMonthBudget || 0)}
+                        {"Rp. " +
+                          formatCurrency(analytic?.currentMonthBudget || 0)}
                       </span>
                     </p>
                   </div>

@@ -1,9 +1,0 @@
--- CreateEnum
-CREATE TYPE "ROLE" AS ENUM ('KASIR', 'ADMIN', 'IT');
-
--- AlterTable
-ALTER TABLE "FlowLog" ADD COLUMN     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "role" "ROLE" NOT NULL DEFAULT 'KASIR',
-ALTER COLUMN "description" SET DEFAULT 'unknown';

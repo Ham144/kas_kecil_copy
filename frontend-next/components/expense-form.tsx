@@ -50,7 +50,7 @@ export function ExpenseForm({}: {}) {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -100,7 +100,7 @@ export function ExpenseForm({}: {}) {
 
         toast.success("Expense created successfully", {
           description: `${data.title} - Rp ${data.amount.toLocaleString(
-            "id-ID"
+            "id-ID",
           )}`,
         });
 
@@ -129,7 +129,7 @@ export function ExpenseForm({}: {}) {
 
     if (invalidFiles.length > 0) {
       toast.error(
-        `Some files are too large. Maximum size: ${maxFileSizeMB}MB per file`
+        `Some files are too large. Maximum size: ${maxFileSizeMB}MB per file`,
       );
       return;
     }
@@ -175,15 +175,28 @@ export function ExpenseForm({}: {}) {
     e.preventDefault();
 
     // Validate required fields
-    if (
-      !formData.title ||
-      !formData.amount ||
-      !formData.warehouseId ||
-      !formData.category
-    ) {
-      toast.error("Tolong isi semua field yang diperlukan");
-      return;
-    }
+    const validateForm = () => {
+      if (!formData.title) {
+        toast.error("Judul (Title) tidak boleh kosong");
+        return false;
+      }
+      if (!formData.amount || formData.amount <= 0) {
+        toast.error("Jumlah (Amount) harus diisi dan lebih dari 0");
+        return false;
+      }
+      if (!formData.warehouseId) {
+        toast.error("Silakan pilih Gudang (Warehouse)");
+        return false;
+      }
+      if (!formData.category) {
+        toast.error("Silakan pilih Kategori");
+        return false;
+      }
+      return true;
+    };
+
+    // Cara pakai:
+    if (!validateForm()) return;
 
     if (formData.amount <= 0) {
       toast.error("Amount must be greater than 0");

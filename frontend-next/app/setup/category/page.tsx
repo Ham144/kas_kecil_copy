@@ -14,6 +14,8 @@ import type {
 } from "@/types/flowcategory.type";
 import { CategoryTable } from "@/components/CategoryTable";
 import { FlowLogCategoryApi } from "@/api/category.api";
+import { WarehouseApi } from "@/api/warehouse";
+import { Warehouse } from "@/types/warehouse";
 
 export default function CategorySetupPage() {
   const router = useRouter();
@@ -21,6 +23,14 @@ export default function CategorySetupPage() {
 
   // Deklarasikan state yang hilang
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<
+    string | null
+  >();
+
+  const warehouses = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: async () => await WarehouseApi.getWarehouses(),
+  });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] =
@@ -29,19 +39,16 @@ export default function CategorySetupPage() {
     name: "",
     description: "",
     no: "",
+    warehouseId: "",
   });
 
-  const { mutateAsync: handleCreateCategory, isPending: creatingCategory } =
-    useMutation({
-      mutationKey: ["flow-log-category"],
-      mutationFn: async () => FlowLogCategoryApi.create(formValues),
-      onError: (err: any) => {
-        toast.error(err.response?.data?.message);
-      },
-    });
-
   const resetForm = () => {
-    setFormValues({ name: "", description: "", no: "" });
+    setFormValues({
+      name: "",
+      description: "",
+      no: "",
+      warehouseId: "",
+    });
     setEditingCategory(null);
   };
 
@@ -54,19 +61,18 @@ export default function CategorySetupPage() {
 
   const { data: categories = [], isLoading } = useQuery<FlowCategoryResponse[]>(
     {
-      queryKey: ["flow-log-category"],
-      queryFn: async () => FlowLogCategoryApi.showAll(),
+      queryKey: ["flow-log-category", searchQuery, selectedWarehouseId],
+      queryFn: async () =>
+        FlowLogCategoryApi.showAll({
+          selectedWarehouseId: selectedWarehouseId,
+          searchKey: searchQuery,
+        }),
     },
   );
 
   const createCategoryMutation = useMutation({
-    mutationFn: async (body: FlowCategoryCreate) => {
-      const res = await axiosInstance.post<FlowCategoryResponse>(
-        "/flow-log-category",
-        body,
-      );
-      return res.data;
-    },
+    mutationFn: async (body: FlowCategoryCreate) =>
+      await FlowLogCategoryApi.create(body),
     onSuccess: () => {
       toast.success("Category created successfully");
       queryClient.invalidateQueries({ queryKey: ["flow-log-category"] });
@@ -90,7 +96,7 @@ export default function CategorySetupPage() {
       body: FlowCategoryCreate;
     }) => {
       const res = await axiosInstance.patch<FlowCategoryResponse>(
-        `/flow-log-category/${id}`,
+        `/api/flow-log-category/${id}`,
         body,
       );
       return res.data;
@@ -114,6 +120,9 @@ export default function CategorySetupPage() {
     onSuccess: () => {
       toast.success("Category deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["flow-log-category"] });
+      (
+        document.getElementById("delete-category-confirm") as HTMLDialogElement
+      )?.close();
     },
     onError: (error: any) => {
       const errorMessage =
@@ -149,8 +158,8 @@ export default function CategorySetupPage() {
       description: formValues.description?.trim()
         ? formValues.description.trim()
         : undefined,
+      warehouseId: formValues.warehouseId,
     };
-
     if (editingCategory) {
       updateCategoryMutation.mutate({ id: editingCategory.id, body: payload });
     } else {
@@ -164,28 +173,68 @@ export default function CategorySetupPage() {
       <main className="flex-1">
         <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
           <div className="mb-8">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <span
-                className="cursor-pointer "
-                onClick={() => {
-                  router.push("/setup");
-                }}
-              >
-                Setup
-              </span>
-              <span>/</span>
-              <span className="text-foreground font-medium">Warehouse</span>
-            </div>
+            <div className="flex justify-between px-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <span
+                  className="cursor-pointer "
+                  onClick={() => {
+                    router.push("/setup");
+                  }}
+                >
+                  Setup
+                </span>
+                <span>/</span>
+                <span className="text-foreground font-medium">Warehouse</span>
+              </div>
 
-            <h1 className="text-3xl font-semibold text-foreground">
-              Warehouse Setup
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Manage your warehouse locations and categories
-            </p>
+              <div className="flex flex-col">
+                <h1 className="text-3xl font-semibold text-foreground">
+                  Category Setup
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Manage your warehouse locations and categories
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 p-4 bg-white border-b border-gray-200">
+              {warehouses.isLoading ? (
+                <div className="flex justify-center w-full py-2">
+                  <span className="loading loading-ring loading-md text-black"></span>
+                </div>
+              ) : (
+                <div className="inline-flex flex-wrap p-1 bg-gray-100 rounded-lg shadow-sm border border-gray-200">
+                  {/* Tombol "Semua" */}
+                  <button
+                    onClick={() => setSelectedWarehouseId(null)}
+                    className={`px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md ${
+                      selectedWarehouseId === null
+                        ? "bg-black text-white shadow-md"
+                        : "text-gray-600 hover:bg-white hover:text-black"
+                    }`}
+                  >
+                    All
+                  </button>
+
+                  {/* Daftar Warehouse */}
+                  {warehouses.data?.map((warehouse) => (
+                    <button
+                      key={warehouse.id}
+                      onClick={() => setSelectedWarehouseId(warehouse.id)}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md ${
+                        selectedWarehouseId === warehouse.id
+                          ? "bg-black text-white shadow-md"
+                          : "text-gray-600 hover:bg-white hover:text-black"
+                      }`}
+                    >
+                      {warehouse.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {creatingCategory ? (
+          {createCategoryMutation.isPending ? (
             <span className="loading loading-ring loading-lg"></span>
           ) : (
             <CategoryTable
@@ -231,8 +280,25 @@ export default function CategorySetupPage() {
                   setFormValues((prev) => ({ ...prev, no: e.target.value }))
                 }
                 placeholder="Category number"
-                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg border   border-input bg-background px-2 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2  focus:ring-primary/20"
               />
+
+              <select
+                value={formValues.warehouseId}
+                className="select w-full border px-2"
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    warehouseId: e.target.value,
+                  }))
+                }
+              >
+                <option selected>Select Warehouse</option>
+                {!warehouses.isLoading &&
+                  warehouses.data.map((warehouse: Warehouse) => (
+                    <option value={warehouse.id}>{warehouse.name}</option>
+                  ))}
+              </select>
 
               <input
                 type="text"
@@ -265,7 +331,10 @@ export default function CategorySetupPage() {
                   {editingCategory ? "Update" : "Add"}
                 </Button>
                 <Button
-                  onClick={() => handleDialogChange(false)}
+                  onClick={() => {
+                    handleDialogChange(false);
+                    resetForm();
+                  }}
                   variant="outline"
                   className="flex-1 rounded-lg bg-transparent py-2"
                 >

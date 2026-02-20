@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { WarehouseApi } from "@/api/warehouse";
 import { Role } from "@/types/role.type";
 import { Warehouse } from "@/types/warehouse";
+import { FlowLogCategoryApi } from "@/api/category.api";
 
 export function RevenueForm({}: {}) {
   const { userInfo } = useUserInfo();
@@ -44,11 +45,7 @@ export function RevenueForm({}: {}) {
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
     queryKey: ["flow-log-category"],
-    queryFn: async () => {
-      const res =
-        await axiosInstance.get<FlowCategoryResponse[]>("/flow-log-category");
-      return res.data;
-    },
+    queryFn: async () => await FlowLogCategoryApi.showAll(),
   });
 
   const handleInputChange = (
@@ -179,17 +176,29 @@ export function RevenueForm({}: {}) {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log(formData);
     // Validate required fields
-    if (
-      !formData.title ||
-      !formData.amount ||
-      !formData.warehouseId ||
-      !formData.category
-    ) {
-      toast.error("Tolong isi semua field yang diperlukan");
-      return;
-    }
+    const validateForm = () => {
+      if (!formData.title) {
+        toast.error("Judul (Title) tidak boleh kosong");
+        return false;
+      }
+      if (!formData.amount || formData.amount <= 0) {
+        toast.error("Jumlah (Amount) harus diisi dan lebih dari 0");
+        return false;
+      }
+      if (!formData.warehouseId) {
+        toast.error("Silakan pilih Gudang (Warehouse)");
+        return false;
+      }
+      if (!formData.category) {
+        toast.error("Silakan pilih Kategori");
+        return false;
+      }
+      return true;
+    };
+
+    // Cara pakai:
+    if (!validateForm()) return;
 
     if (formData.amount <= 0) {
       toast.error("Amount must be greater than 0");
