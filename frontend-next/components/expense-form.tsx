@@ -38,7 +38,11 @@ export function ExpenseForm({}: {}) {
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
     queryKey: ["flow-log-category"],
-    queryFn: FlowLogCategoryApi.showAll,
+    queryFn: () =>
+      FlowLogCategoryApi.showAll({
+        searchKey: "",
+        selectedWarehouseId: userInfo?.warehouseId || "",
+      }),
   });
 
   const { data: warehouses } = useQuery({

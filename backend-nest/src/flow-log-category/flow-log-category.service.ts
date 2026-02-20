@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma.service';
 import { flowCategoryCreateDto } from 'src/models/flow-category.model';
+import { TokenPayload } from 'src/models/tokenPayload.model';
 
 //Expense category
 @Injectable()
@@ -47,7 +48,13 @@ export class FlowLogCategoryService {
     }
   }
 
-  findAll(filter: { selectedWarehouseId: string; searchKey: string }) {
+  findAll(
+    filter: {
+      selectedWarehouseId: string;
+      searchKey: string;
+    },
+    userInfo: TokenPayload,
+  ) {
     // const { selectedWarehouseId, searchKey } = filter;
     const where: Prisma.FlowLogCategoryWhereInput = {};
 
@@ -59,6 +66,10 @@ export class FlowLogCategoryService {
         { no: { contains: filter.searchKey, mode: 'insensitive' } },
         { name: { contains: filter.searchKey, mode: 'insensitive' } },
       ];
+    }
+
+    if (userInfo.role == 'KASIR') {
+      where.warehouseId = userInfo.warehouseId;
     }
 
     try {

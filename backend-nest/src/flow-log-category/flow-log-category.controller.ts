@@ -25,8 +25,8 @@ export class FlowLogCategoryController {
   }
 
   @Get()
-  findAll(@Query() filter) {
-    return this.flowLogCategoryService.findAll(filter);
+  findAll(@Auth() userInfo: TokenPayload, @Query() filter) {
+    return this.flowLogCategoryService.findAll(filter, userInfo);
   }
 
   @Get(':id')

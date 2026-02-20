@@ -134,7 +134,7 @@ export default function WarehousePage() {
     if (!keyword) return warehouses;
 
     return warehouses.filter((warehouse) =>
-      [warehouse.name, warehouse.location, warehouse.description]
+      [warehouse.name, warehouse.description]
         .filter(Boolean)
         .some((field) => field!.toLowerCase().includes(keyword)),
     );

@@ -45,7 +45,11 @@ export function RevenueForm({}: {}) {
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
     queryKey: ["flow-log-category"],
-    queryFn: async () => await FlowLogCategoryApi.showAll(),
+    queryFn: async () =>
+      await FlowLogCategoryApi.showAll({
+        searchKey: "",
+        selectedWarehouseId: userInfo?.warehouseId || "",
+      }),
   });
 
   const handleInputChange = (

@@ -39,7 +39,6 @@ export function WarehouseModal({
       if (initialWarehouse) {
         setFormData({
           name: initialWarehouse.name || "",
-          location: initialWarehouse.location || "",
           description: initialWarehouse.description || "",
         });
       } else {
