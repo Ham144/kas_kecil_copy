@@ -43,7 +43,7 @@ export function middleware(req: NextRequest) {
     // Decode token untuk check expiration dan role
     const payload = token.split(".")[1];
     const decoded: TokenPayload = JSON.parse(
-      Buffer.from(payload, "base64").toString()
+      Buffer.from(payload, "base64").toString(),
     );
 
     // Check token expiration (exp adalah timestamp dalam detik)

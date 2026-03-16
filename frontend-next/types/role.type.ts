@@ -1,5 +1,6 @@
 export enum Role {
-  ADMIN = "ADMIN",
-  IT = "IT",
-  KASIR = "KASIR",
+  IT = "IT", // super admin
+  ADMIN = "ADMIN", // orang keuangan
+  SUPERVISION = "SUPERVISION", // setara admin tapi hanya bisa melihat
+  KASIR = "KASIR", // hanya terbatas di warehouse nya
 }
