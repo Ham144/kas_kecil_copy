@@ -15,6 +15,8 @@ import { LoginRequestLdapDto, LoginResponseDto } from 'src/models/user.model';
 import { Response, Request } from 'express';
 import { refreshTokenOption, accessTokenOption } from './tokenCookieOptions';
 import { ErrorResponse } from 'src/models/error.model';
+import { Auth } from 'src/common/auth.decorator';
+import { TokenPayload } from 'src/models/tokenPayload.model';
 
 @Controller('/api/user')
 export class UserController {
@@ -39,7 +41,6 @@ export class UserController {
       if (hasTokens) {
         res.cookie('refresh_token', response.refresh_token, refreshTokenOption);
         res.cookie('access_token', response.access_token, accessTokenOption);
-      } else {
       }
 
       // Hapus token dari response body
@@ -69,7 +70,7 @@ export class UserController {
   }
 
   @Get('/get-user-info')
-  async getUserInfo(@Req() req: Request) {
+  async getUserInfo(@Auth() userInfo: TokenPayload, @Req() req: Request) {
     return this.userService.getUserInfo(req);
   }
 

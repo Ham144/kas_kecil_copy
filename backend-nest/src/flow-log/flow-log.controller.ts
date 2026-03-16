@@ -115,10 +115,7 @@ export class FlowLogController {
   }
 
   @Get('/analytic')
-  async getAnalytics(
-    @Query() filter: GetAnalyticFilter,
-    @Auth() userInfo: any,
-  ) {
+  async getAnalytics(@Query() filter: GetAnalyticFilter) {
     //cek redis first
     const cacheKey = `analytic:${filter.selectedWarehouseId}:${filter.selectedDate}`;
 
@@ -130,7 +127,7 @@ export class FlowLogController {
       return data;
     }
 
-    const data = await this.flowLogService.getAnalytics(userInfo, filter);
+    const data = await this.flowLogService.getAnalytics(filter);
 
     // Check if result is an error response
     await this.redisService.set(

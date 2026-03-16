@@ -36,20 +36,20 @@ export function RevenueForm({}: {}) {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  const { data: warehouses } = useQuery({
-    queryKey: ["warehouses"],
-    queryFn: async () => await WarehouseApi.getWarehouses(""),
-    enabled: userInfo?.role != Role.KASIR,
-  });
-
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
-    queryKey: ["flow-log-category"],
-    queryFn: async () =>
-      await FlowLogCategoryApi.showAll({
+    queryKey: ["flow-log-category", formData?.warehouseId],
+    queryFn: () =>
+      FlowLogCategoryApi.showAll({
         searchKey: "",
-        selectedWarehouseId: userInfo?.warehouseId || "",
+        selectedWarehouseId: formData?.warehouseId || "",
       }),
+  });
+
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses", userInfo?.role],
+    queryFn: async () => await WarehouseApi.getWarehouses(""),
+    enabled: userInfo?.role != Role.KASIR,
   });
 
   const handleInputChange = (
@@ -244,6 +244,28 @@ export function RevenueForm({}: {}) {
             className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
+
+        {/* Warehouse (Disabled) */}
+        <div className="w-full border p-2 rounded-md">
+          <label className="block text-sm font-medium text-foreground">
+            Warehouse
+          </label>
+          <select
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                warehouseId: e.target.value,
+              }))
+            }
+            className="select w-full "
+          >
+            {warehouses?.length &&
+              warehouses.map((warehouse: Warehouse) => (
+                <option value={warehouse.id}>{warehouse.name}</option>
+              ))}
+          </select>
+        </div>
+
         <div>
           <label className=" text-sm font-medium text-foreground flex justify-between">
             <div className="flex">
@@ -302,27 +324,6 @@ export function RevenueForm({}: {}) {
               className="w-full rounded-xl border border-input bg-background pl-10 pr-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
-        </div>
-
-        {/* Warehouse (Disabled) */}
-        <div className="w-full border p-2 rounded-md">
-          <label className="block text-sm font-medium text-foreground">
-            Warehouse
-          </label>
-          <select
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                warehouseId: e.target.value,
-              }))
-            }
-            className="select w-full "
-          >
-            {warehouses?.length &&
-              warehouses.map((warehouse: Warehouse) => (
-                <option value={warehouse.id}>{warehouse.name}</option>
-              ))}
-          </select>
         </div>
 
         {/* Date (Disabled) */}

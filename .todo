@@ -33,5 +33,10 @@ setup biaya apa saja: parkir, BBM
 [x] fid: role: admin boleh get semua warehouse
 
 // remake ulang:
-[] add: category tidak berbagi tapi terkait dengan warehouse tertentu
-[] add: budget terkait ke category bukan warehouse, artinya 1 warehouse punya multi budget sejumlah category
+[x] add: category tidak berbagi tapi terkait dengan warehouse tertentu
+[x] add: budget terkait ke category bukan warehouse, artinya 1 warehouse punya multi budget sejumlah category
+
+
+//fix 13 maret 2026
+[x] fix: filter warehouse tidak berfungsi di /admin/stats
+[x] fix: filter bulan harusnya berdasarkan date yg dipilih saat buat bukan createdAt dari DB

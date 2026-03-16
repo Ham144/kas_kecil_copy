@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -105,51 +104,48 @@ export class UserService {
 
     //jika user sebelumnya memiliki description yg berbeda dengan ldap :ganti
     if (user) {
-      //bagian pemeriksaan field yg berubah
       let warehouseId = user.warehouseId;
 
+      // Jika nama warehouse di LDAP berubah dari yang ada di DB
       if (warehouseName !== user.warehouse.name) {
-        //rumah baru - upsert warehouse dulu
+        // Gunakan UPSERT berdasarkan NAME, bukan ID
         let newWarehouse = await this.prismaService.warehouse.upsert({
           where: {
-            id: warehouseId,
+            name: warehouseName, // Cari berdasarkan nama yang dari LDAP
           },
           update: {
+            // Jika sudah ada warehouse dengan nama itu, pastikan user ini jadi membernya
             members: {
-              connect: {
-                username: body.username,
-              },
+              connect: { username: body.username },
             },
           },
           create: {
-            name: warehouseName,
+            name: warehouseName, // Jika benar-benar baru, buat baru
           },
         });
         warehouseId = newWarehouse.id;
       }
 
+      // Update data user
       user = await this.prismaService.user.update({
-        where: {
-          username: body.username,
-        },
+        where: { username: body.username },
         data: {
           description: userLDAP['description'],
           displayName: userLDAP['displayName'],
           warehouseId: warehouseId,
         },
-        include: {
-          warehouse: true,
-        },
+        include: { warehouse: true },
       });
     } else {
+      // Pastikan pencarian warehouse menggunakan nama yang sudah seragam (Upper Case)
       let where: Prisma.WarehouseWhereUniqueInput = {
-        name: userLDAP['physicalDeliveryOfficeName'],
+        name: warehouseName,
       };
 
       const transactionResult = await this.prismaService.$transaction(
         async (tx) => {
           const warehouse = await tx.warehouse.upsert({
-            where,
+            where, // Cari berdasarkan Nama
             update: {},
             create: {
               name: warehouseName,
@@ -328,8 +324,8 @@ export class UserService {
         include: {
           warehouse: true,
         },
-        skip: (page - 1) * 10,
-        take: 10,
+        // skip: (page - 1) * 10,
+        // take: 10,
       },
     );
 

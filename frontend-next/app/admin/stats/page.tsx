@@ -34,16 +34,21 @@ import { ModePeriod } from "@/types/flowcategory.type";
 import { Role } from "@/types/role.type";
 import { WarehouseApi } from "@/api/warehouse";
 import { Warehouse } from "@/types/warehouse";
-import { toast } from "sonner";
 
 export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const { userInfo } = useUserInfo();
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
-  const [filter, setFilter] = useState<GetAnalyticFilter>({
-    selectedDate: new Date().toISOString().split("T")[0],
-    selectedWarehouseId: userInfo?.warehouseId || "all",
+  const [filter, setFilter] = useState<GetAnalyticFilter>(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return {
+      selectedDate: `${year}-${month}-${day}`,
+      selectedWarehouseId: userInfo?.warehouseId || "all",
+    };
   });
 
   const { data: warehouses } = useQuery({
@@ -59,11 +64,11 @@ export default function StatsPage() {
         return res;
       } catch (error: any) {
         setIsErrorAnalytic(true);
-        setErrors(() => [error.response.data.message]);
+        setErrors(() => [error.response?.data?.message || "Error"]);
         return null;
       }
     },
-    enabled: !!userInfo?.warehouseId,
+    enabled: !!userInfo,
   });
 
   const COLORS = [
@@ -85,25 +90,39 @@ export default function StatsPage() {
 
   useEffect(() => {
     const today = new Date();
+    // Use local time instead of UTC to avoid shifting to previous month
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    const localDate = `${year}-${month}-${day}`;
+    const localMonth = `${year}-${month}`;
 
     if (modePeriod == ModePeriod.DATE) {
       setFilter((prevFilter) => ({
         ...prevFilter,
-        selectedDate: today.toISOString().split("T")[0], // 2026-02-19 (format DATE)
+        selectedDate: localDate, // Local DATE
+        selectedWarehouseId:
+          prevFilter.selectedWarehouseId === "all"
+            ? userInfo?.warehouseId || "all"
+            : prevFilter.selectedWarehouseId,
       }));
     } else if (modePeriod == ModePeriod.MONTH) {
       setFilter((prevFilter) => ({
         ...prevFilter,
-        selectedDate: today.toISOString().slice(0, 7), // 2026-02 (format MONTH)
+        selectedDate: localMonth, // Local MONTH
+        selectedWarehouseId:
+          prevFilter.selectedWarehouseId === "all"
+            ? userInfo?.warehouseId || "all"
+            : prevFilter.selectedWarehouseId,
       }));
     } else {
-      toast("a");
       setFilter({
-        selectedDate: today.toISOString().split("T")[0],
-        selectedWarehouseId: userInfo?.warehouseId,
+        selectedDate: localDate,
+        selectedWarehouseId: userInfo?.warehouseId || "all",
       });
     }
-  }, [modePeriod]);
+  }, [modePeriod, userInfo?.warehouseId]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -395,7 +414,7 @@ export default function StatsPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-black">
-                        Remaining:{" "}
+                        Remaining:
                         <span className="text-black font-medium">
                           Rp {item.budgetRemaining.toLocaleString()}
                         </span>
@@ -443,7 +462,7 @@ export default function StatsPage() {
                         dataKey="value"
                       >
                         {analytic?.topCategories.map(
-                          (entry: any, index: number) => (
+                          (_: any, index: number) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={COLORS[index % COLORS.length]}

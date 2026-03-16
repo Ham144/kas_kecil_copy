@@ -35,6 +35,19 @@ export class FlowLogService {
     userInfo: any,
   ): Promise<FlowlogResponseDto | ErrorResponse> {
     try {
+      //validation
+      const isValid = await this.prismaService.flowLogCategory.findFirst({
+        where: {
+          id: createFlowLogDto.category,
+          warehouseId: createFlowLogDto.warehousId,
+        },
+      });
+      if (!isValid) {
+        throw new BadRequestException(
+          'category tidak termasuk di warehouse dipilih',
+        );
+      }
+
       const warehouseId =
         (createFlowLogDto as any).warehousId ||
         (createFlowLogDto as any).warehouseId ||
@@ -118,7 +131,7 @@ export class FlowLogService {
       const isKasir = userInfo.role === 'KASIR';
       const where: Prisma.FlowLogWhereInput = {};
 
-      // ✅ Filter dasar
+      // ? Filter dasar
       if (type !== FlowLogType.ALL) {
         where.type = type;
       }
@@ -134,7 +147,7 @@ export class FlowLogService {
         where.warehouseId = userInfo.warehouseId;
       }
 
-      // ✅ Filter pencarian
+      // ? Filter pencarian
       if (searchKey && !isDownload) {
         where.title = {
           contains: searchKey,
@@ -142,7 +155,7 @@ export class FlowLogService {
         };
       }
 
-      // ✅ Filter tanggal berdasarkan bulan dan tahun
+      // ? Filter tanggal berdasarkan bulan dan tahun
       if (selectedDate) {
         let from: Date;
         let to: Date;
@@ -165,7 +178,7 @@ export class FlowLogService {
           from = new Date(year, month - 1, 1);
           to = new Date(year, month, 0, 23, 59, 59, 999);
 
-          where.createdAt = {
+          where.date = {
             gte: from,
             lte: to,
           };
@@ -240,7 +253,7 @@ export class FlowLogService {
         }
       }
 
-      // ✅ Query data dan total paralel
+      // ? Query data dan total paralel
       const [logs, total] = await Promise.all([
         this.prismaService.flowLog.findMany({
           where,
@@ -258,7 +271,7 @@ export class FlowLogService {
         this.prismaService.flowLog.count({ where }),
       ]);
 
-      // ✅ Kembalikan hasil dengan meta info
+      // ? Kembalikan hasil dengan meta info
       return {
         logs,
         total,
@@ -274,17 +287,16 @@ export class FlowLogService {
     }
   }
 
-  async getAnalytics(userInfo: TokenPayload, filter: GetAnalyticFilter) {
-    const { selectedDate, selectedWarehouseId, selectedCategoryId } = filter;
+  async getAnalytics(filter: GetAnalyticFilter) {
+    const { selectedDate, selectedWarehouseId } = filter;
 
     const [yearStr, monthStr, dateStr] = selectedDate.toString().split('-');
 
-    const selectedDateObj = new Date(selectedDate);
-    const currentMonth = selectedDateObj.getMonth(); //jangan +1 disini, memang gitu
-    const currentYear = selectedDateObj.getFullYear();
+    const currentYear = Number(yearStr);
+    const currentMonth = Number(monthStr) - 1;
 
-    let from;
-    let to;
+    let from: Date;
+    let to: Date;
 
     if (dateStr) {
       //mode date
@@ -298,27 +310,28 @@ export class FlowLogService {
 
     // Base filter (bisa diperluas)
     const baseWhere: any = {
-      createdAt: { gte: from, lte: to },
-      ...(selectedWarehouseId !== 'all' && {
-        warehouseId: selectedWarehouseId,
-      }),
+      date: { gte: from, lte: to },
     };
 
-    // 🔹1. Total Inflow
+    if (selectedWarehouseId && selectedWarehouseId !== 'all') {
+      console.log(selectedWarehouseId);
+      baseWhere.warehouseId = selectedWarehouseId;
+    }
+    // ??1. Total Inflow
     const totalInflowAgg = await this.prismaService.flowLog.aggregate({
       _sum: { amount: true },
       where: { ...baseWhere, type: 'IN' },
     });
     const totalInflow = totalInflowAgg._sum.amount || 0;
 
-    // 🔹2. Total Outflow
+    // ??2. Total Outflow
     const totalOutflowAgg = await this.prismaService.flowLog.aggregate({
       _sum: { amount: true },
       where: { ...baseWhere, type: 'OUT' },
     });
     const totalOutflow = totalOutflowAgg._sum.amount || 0;
 
-    // 🔹3. Top 5 Categories (by sum amount OUT)
+    // ??3. Top 5 Categories (by sum amount OUT)
     const topCategoriesInOut = await this.prismaService.flowLog.groupBy({
       by: ['categoryId'],
       _sum: { amount: true },
@@ -370,7 +383,7 @@ export class FlowLogService {
       }),
     );
 
-    // 🔹4. Top 5 Warehouses (OUT)
+    // ??4. Top 5 Warehouses (OUT)
     const topWarehousesGroup = await this.prismaService.flowLog.groupBy({
       by: ['warehouseId'],
       _sum: { amount: true },
@@ -392,7 +405,7 @@ export class FlowLogService {
       }),
     );
 
-    // 🔹5. Budget
+    // ??5. Budget
     const currentBudget = {
       amount: 0,
     };
@@ -433,7 +446,7 @@ export class FlowLogService {
 
     const budgetRemaining = currentBudget.amount - budgetSpent;
 
-    // 🔹6. Daily line data/ flow over time (OUT &IN)
+    // ??6. Daily line data/ flow over time (OUT &IN)
     //filternya beda sendiri
     const startMonth = new Date(currentYear, currentMonth, 1);
     const endMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
@@ -472,15 +485,23 @@ export class FlowLogService {
 
     const categoriesToBudget = [];
     for (const category of categoriesWithNameRawAll) {
+      const budgetWhere: any = {
+        categoryId: category.categoryId,
+        month: Number(currentMonth + 1),
+        year: Number(currentYear),
+      };
+
+      if (selectedWarehouseId !== 'all') {
+        budgetWhere.category = {
+          warehouseId: selectedWarehouseId,
+        };
+      }
+
       const budget = await this.prismaService.budget.findFirst({
-        where: {
-          categoryId: category.categoryId,
-          month: Number(currentMonth + 1),
-          year: Number(currentYear),
-        },
+        where: budgetWhere,
       });
 
-      // 🔹 Ambil nilai amount dengan aman
+      // ?? Ambil nilai amount dengan aman
       const budgetAmount = budget?.amount || 0;
 
       const totalInflowAgg = await this.prismaService.flowLog.aggregate({
@@ -514,7 +535,7 @@ export class FlowLogService {
       });
     }
 
-    // 🔹8. Bentuk response final (pertahankan field lama, tambah field baru)
+    // ??8. Bentuk response final (pertahankan field lama, tambah field baru)
     const analytics: AnalyticResponseDto = {
       totalInflow,
       totalOutflow,

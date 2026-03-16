@@ -65,11 +65,11 @@ export default function CashFlow() {
   const [filter, setFilter] = useState<RecentFlowLogsFilter>(initiatFilter);
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
-    queryKey: ["flow-log-category"],
+    queryKey: ["flow-log-category", filter.warehouse],
     queryFn: () =>
       FlowLogCategoryApi.showAll({
         searchKey: "",
-        selectedWarehouseId: userInfo?.warehouseId || "",
+        selectedWarehouseId: filter?.warehouse || "",
       }),
   });
 

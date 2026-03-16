@@ -39,14 +39,14 @@ model Warehouse {
   flowLogs  FlowLog[]
 }
 
-model Budget {
-  id           String   @id @default(uuid())
-  categoryId   String
-  category     FlowLogCategory @relation(fields: [categoryId], references: [id])
-  month        Int
-  year         Int
-  amount       Float
-}
+  model Budget {
+    id           String   @id @default(uuid())
+    categoryId   String
+    category     FlowLogCategory @relation(fields: [categoryId], references: [id])
+    month        Int
+    year         Int
+    amount       Float
+  }
 
 model FlowLog {
   id String @id @default(uuid())
@@ -77,7 +77,6 @@ model FlowLogCategory {
 
   @@unique([name, warehouseId])
 }
-
 
 enum FlowLogType {
   IN

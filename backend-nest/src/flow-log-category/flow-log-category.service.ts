@@ -48,17 +48,11 @@ export class FlowLogCategoryService {
     }
   }
 
-  findAll(
-    filter: {
-      selectedWarehouseId: string;
-      searchKey: string;
-    },
-    userInfo: TokenPayload,
-  ) {
+  async findAll(filter: { selectedWarehouseId: string; searchKey: string }) {
     // const { selectedWarehouseId, searchKey } = filter;
     const where: Prisma.FlowLogCategoryWhereInput = {};
 
-    if (filter.selectedWarehouseId) {
+    if (filter.selectedWarehouseId && filter.selectedWarehouseId !== 'all') {
       where.warehouseId = filter.selectedWarehouseId;
     }
     if (filter.searchKey) {
@@ -67,11 +61,6 @@ export class FlowLogCategoryService {
         { name: { contains: filter.searchKey, mode: 'insensitive' } },
       ];
     }
-
-    if (userInfo.role == 'KASIR') {
-      where.warehouseId = userInfo.warehouseId;
-    }
-
     try {
       return this.prismaService.flowLogCategory.findMany({
         where,

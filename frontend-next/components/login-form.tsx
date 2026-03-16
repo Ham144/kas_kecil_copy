@@ -11,8 +11,8 @@ import { useUserInfo } from "./UserContext";
 
 export function LoginForm() {
   const [formData, setFormData] = useState({
-    username: "yafizham",
-    password: "Catur2025!",
+    username: "",
+    password: "",
   });
   const { userInfo, setUserInfo } = useUserInfo();
   if (userInfo) {

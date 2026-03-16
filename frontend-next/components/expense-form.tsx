@@ -37,16 +37,16 @@ export function ExpenseForm({}: {}) {
 
   // Fetch categories from backend
   const { data: categories = [] } = useQuery<FlowCategoryResponse[]>({
-    queryKey: ["flow-log-category"],
+    queryKey: ["flow-log-category", formData?.warehouseId],
     queryFn: () =>
       FlowLogCategoryApi.showAll({
         searchKey: "",
-        selectedWarehouseId: userInfo?.warehouseId || "",
+        selectedWarehouseId: formData?.warehouseId || "",
       }),
   });
 
   const { data: warehouses } = useQuery({
-    queryKey: ["warehouses"],
+    queryKey: ["warehouses", userInfo?.role],
     queryFn: async () => await WarehouseApi.getWarehouses(""),
     enabled: userInfo?.role != Role.KASIR,
   });
@@ -236,6 +236,27 @@ export function ExpenseForm({}: {}) {
           />
         </div>
 
+        {/* Warehouse (Disabled) */}
+        <div className="w-full border p-2 rounded-md">
+          <label className="block text-sm font-medium text-foreground">
+            Warehouse
+          </label>
+          <select
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                warehouseId: e.target.value,
+              }))
+            }
+            className="select w-full "
+          >
+            {warehouses?.length &&
+              warehouses.map((warehouse: Warehouse) => (
+                <option value={warehouse.id}>{warehouse.name}</option>
+              ))}
+          </select>
+        </div>
+
         <div>
           <label className=" text-sm font-medium text-foreground flex justify-between">
             <div className="flex">
@@ -296,27 +317,6 @@ export function ExpenseForm({}: {}) {
               className="w-full rounded-xl border border-input bg-background pl-10 pr-4 py-2.5 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
-        </div>
-
-        {/* Warehouse (Disabled) */}
-        <div className="w-full border p-2 rounded-md">
-          <label className="block text-sm font-medium text-foreground">
-            Warehouse
-          </label>
-          <select
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                warehouseId: e.target.value,
-              }))
-            }
-            className="select w-full "
-          >
-            {warehouses?.length &&
-              warehouses.map((warehouse: Warehouse) => (
-                <option value={warehouse.id}>{warehouse.name}</option>
-              ))}
-          </select>
         </div>
 
         {/* Date (Disabled) */}
