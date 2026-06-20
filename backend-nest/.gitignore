@@ -57,3 +57,18 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
+
+# TypeScript / Nest build cache
+*.tsbuildinfo
+
+# Environment — lebih lengkap
+.env.*
+!.env.example
+
+# OS (Windows)
+Thumbs.db
+
+# Editor swap
+*.swp
+*.swo
+*~

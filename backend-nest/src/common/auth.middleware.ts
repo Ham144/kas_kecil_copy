@@ -1,5 +1,5 @@
 import { TokenPayload } from 'src/models/tokenPayload.model';
-import { HttpException, Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 
 @Injectable()

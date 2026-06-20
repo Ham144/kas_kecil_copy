@@ -35,11 +35,16 @@ export class FlowLogService {
     userInfo: any,
   ): Promise<FlowlogResponseDto | ErrorResponse> {
     try {
-      //validation
+      const warehouseId = createFlowLogDto.warehouseId;
+
+      if (!warehouseId) {
+        throw new BadRequestException('warehouseId wajib dipilih');
+      }
+
       const isValid = await this.prismaService.flowLogCategory.findFirst({
         where: {
           id: createFlowLogDto.category,
-          warehouseId: createFlowLogDto.warehousId,
+          warehouseId,
         },
       });
       if (!isValid) {
@@ -47,11 +52,6 @@ export class FlowLogService {
           'category tidak termasuk di warehouse dipilih',
         );
       }
-
-      const warehouseId =
-        (createFlowLogDto as any).warehousId ||
-        (createFlowLogDto as any).warehouseId ||
-        (createFlowLogDto as any).warehouse;
 
       const data: Prisma.FlowLogCreateInput = {
         title: createFlowLogDto.title,
@@ -77,14 +77,6 @@ export class FlowLogService {
         },
       };
 
-      if (warehouseId) {
-        (data as any).warehouse = {
-          connect: {
-            id: warehouseId,
-          },
-        };
-      }
-
       const flowLog = await this.prismaService.flowLog.create({
         data,
         include: {
@@ -107,6 +99,9 @@ export class FlowLogService {
         category: flowLog.category,
       };
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       return {
         statusCode: 500,
         message: `Error creating expense: ${error.message}`,

@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  [data-theme="light"] {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 32% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 214 32% 94%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 214 32% 91%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --expense: 0 84% 55%;
+    --expense-foreground: 0 0% 100%;
+
+    --revenue: 142 71% 40%;
+    --revenue-foreground: 0 0% 100%;
+
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 217 91% 45%;
+
+    --chart-1: 217 91% 45%;
+    --chart-2: 142 71% 40%;
+    --chart-3: 0 84% 55%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 262 83% 58%;
+
+    --radius: 0.75rem;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .card {
+    @apply border border-border rounded-lg bg-card text-card-foreground shadow-sm;
+  }
+
+  .btn {
+    @apply border-border;
+    background-color: transparent;
+  }
+
+  .btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+  .btn-primary:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+
+  .btn-outline {
+    background-color: transparent;
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .btn-error {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border-color: hsl(var(--destructive));
+  }
+
+  .btn-error:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+  }
+
+  .modal {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-box {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+  }
+
+  [data-theme="light"] {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  [data-theme="light"] .card,
+  [data-theme="light"] .modal-box {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+}

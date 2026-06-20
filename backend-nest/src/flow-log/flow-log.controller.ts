@@ -13,30 +13,17 @@ import { FlowLogService } from './flow-log.service';
 import { FlowLogCreateDto, GetAnalyticFilter } from 'src/models/flow-log.model';
 import { Auth } from 'src/common/auth.decorator';
 import { multerMemoryConfig } from 'src/common/multer.config';
-import * as fs from 'fs';
-import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from 'src/redis/redis.service';
 import { TokenPayload } from 'src/models/tokenPayload.model';
+import { BucketUploadService } from 'src/common/bucket-upload.service';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
-  // Konsisten menggunakan process.cwd() untuk semua environment
-  private readonly uploadDir = path.join(
-    process.cwd(),
-    'uploads',
-    'attachments',
-  );
-
   constructor(
     private readonly flowLogService: FlowLogService,
     private readonly redisService: RedisService,
-  ) {
-    // Buat folder upload jika belum ada
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-    }
-  }
+    private readonly bucketUploadService: BucketUploadService,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(FilesInterceptor('files', 5, multerMemoryConfig))
@@ -45,22 +32,8 @@ export class FlowLogController {
       throw new BadRequestException('No files uploaded');
     }
 
-    // Simpan file dari buffer ke disk
-    const urls = await Promise.all(
-      files.map(async (file) => {
-        // Generate unique filename
-        const ext = path.extname(file.originalname || '');
-        const filename = `${uuidv4()}${ext}`;
-        const filepath = path.join(this.uploadDir, filename);
-        try {
-          await fs.promises.writeFile(filepath, file.buffer);
-          console.log('✅ File saved!');
-        } catch (err) {
-          return new BadRequestException('❌ Error writing file ' + err);
-        }
-        return `/uploads/attachments/${filename}`;
-      }),
-    );
+    const urls = await this.bucketUploadService.uploadFiles(files);
+
     return {
       success: true,
       data: urls,
@@ -77,11 +50,14 @@ export class FlowLogController {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
 
-    const cacheKeyMonth = `analytic:${userInfo.warehouseId}:${year}-${month}`;
-    const cacheKeyDay = `analytic:${userInfo.warehouseId}:${year}-${month}-${day}`;
+    const warehouseId = createFlowLogDto.warehouseId;
+    const cacheKeyMonth = `analytic:${warehouseId}:${year}-${month}`;
+    const cacheKeyDay = `analytic:${warehouseId}:${year}-${month}-${day}`;
 
-    await this.redisService.del(cacheKeyMonth);
-    await this.redisService.del(cacheKeyDay);
+    if (warehouseId) {
+      await this.redisService.del(cacheKeyMonth);
+      await this.redisService.del(cacheKeyDay);
+    }
 
     const result = await this.flowLogService.createExpenseOrRevenue(
       createFlowLogDto,

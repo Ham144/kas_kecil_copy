@@ -18,8 +18,7 @@ export class FlowLogCreateDto {
   note: string;
   attachments: string[];
   type?: string;
-  warehouse: string;
-  warehousId: string;
+  warehouseId: string;
   date: Date;
   category: string;
 }

@@ -6,7 +6,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { ErrorFilter } from './error.filter';
 import { AuthMiddleware } from './auth.middleware';
 // import { R2Service } from './r2.service';
-import { UploadImageLocalService } from './uploadImageLocal.service';
+import { BucketUploadService } from './bucket-upload.service';
 import { HttpExceptionFilter } from './http-exception-filter';
 import { GenerateCsvService } from './generateCsv.service';
 
@@ -25,7 +25,7 @@ import { GenerateCsvService } from './generateCsv.service';
       provide: APP_FILTER,
       useClass: ErrorFilter,
     },
-    UploadImageLocalService,
+    BucketUploadService,
     HttpExceptionFilter,
     GenerateCsvService,
   ],
@@ -33,7 +33,7 @@ import { GenerateCsvService } from './generateCsv.service';
     PrismaService,
     ValidationService,
     // R2Service,
-    UploadImageLocalService,
+    BucketUploadService,
     HttpExceptionFilter,
     GenerateCsvService,
   ],
