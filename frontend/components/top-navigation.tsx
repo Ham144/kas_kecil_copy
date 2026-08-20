@@ -8,6 +8,8 @@ import {
   Settings,
   ChevronDown,
   Crown,
+  BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
@@ -18,6 +20,7 @@ import { useMutation } from "@tanstack/react-query";
 import { AuthApi } from "@/api/auth";
 import { useUserInfo } from "./UserContext";
 import { Role } from "@/types/role.type";
+import { isKasirUser } from "@/lib/role";
 
 export function TopNavigation() {
   const pathname = usePathname();
@@ -32,11 +35,19 @@ export function TopNavigation() {
     },
   });
 
-  const navItems = [
-    { href: "/", label: "Dashboard", icon: Home },
-    { href: "/admin", label: "Administrator", icon: Crown },
-    { href: "/setup", label: "Setup", icon: Settings },
-  ];
+  const isKasir = isKasirUser(userInfo);
+
+  const navItems = isKasir
+    ? [
+        { href: "/", label: "Dashboard", icon: Home },
+        { href: "/admin/flow", label: "Flow", icon: TrendingUp },
+        { href: "/admin/stats", label: "Stats", icon: BarChart3 },
+      ]
+    : [
+        { href: "/", label: "Dashboard", icon: Home },
+        { href: "/admin", label: "Administrator", icon: Crown },
+        { href: "/setup", label: "Setup", icon: Settings },
+      ];
 
   if (loadingUser) {
     return (
@@ -45,6 +56,13 @@ export function TopNavigation() {
       </div>
     );
   }
+
+  const navLinkClass = (isActive: boolean) =>
+    `flex cursor-pointer items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm font-medium transition-all hover:shadow-sm ${
+      isActive
+        ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md"
+        : "text-gray-600 hover:bg-blue-50 hover:text-blue-700"
+    }`;
 
   return (
     <nav className="sticky top-0 z-20 border-b border-blue-100/80 bg-white/90 shadow-sm backdrop-blur-md">
@@ -68,18 +86,15 @@ export function TopNavigation() {
               item.href === "/"
                 ? pathname === "/"
                 : pathname.startsWith(item.href);
+
             return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  className={`flex items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm font-medium transition-all hover:shadow-sm ${
-                    isActive
-                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md"
-                      : "text-gray-600 hover:bg-blue-50 hover:text-blue-700"
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="max-md:hidden">{item.label}</span>
-                </Button>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={navLinkClass(isActive)}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="max-md:hidden">{item.label}</span>
               </Link>
             );
           })}
@@ -139,7 +154,9 @@ export function TopNavigation() {
                     <div>
                       <p className="text-xs text-muted-foreground">Role</p>
                       <span className="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                        {Role[userInfo?.role as keyof typeof Role]}
+                        {Role[userInfo?.role as keyof typeof Role] ||
+                          userInfo?.role ||
+                          "-"}
                       </span>
                     </div>
                   </div>

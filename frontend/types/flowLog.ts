@@ -39,6 +39,12 @@ export interface CreateFlowLogDto {
   category: string; // category ID
 }
 
+export interface UpdateFlowLogDto {
+  note?: string;
+  date?: string;
+  category?: string;
+}
+
 // Filter options for querying flow logs
 export interface FlowLogFilter {
   type?: FlowLogType;

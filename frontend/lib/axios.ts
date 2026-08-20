@@ -95,17 +95,22 @@ axiosInstance.interceptors.response.use(
         isRefreshing = false;
         onRefreshed(); // Clear subscribers even on failure
 
-        // Jika refresh token gagal, redirect ke login (hindari loop di /login)
+        // Jika refresh token gagal, hapus session di server agar cookie httpOnly ikut hilang
         const isOnLogin =
           typeof window !== "undefined" &&
           window.location.pathname === "/login";
-        // Clear any stale cookies and redirect to login
+
+        try {
+          await axios.delete(`${BASE_URL}/api/user/logout`, {
+            withCredentials: true,
+          });
+        } catch (_) {
+          // Best effort only. Backend logout may fail if the token is already invalid.
+        }
+
         if (!isOnLogin) {
           try {
-            // Clear cookies if refresh failed
-            document.cookie = "access_token=; path=/; max-age=0";
-            document.cookie = "refresh_token=; path=/; max-age=0";
-            window.location.href = "/login";
+            window.location.replace("/login");
           } catch (_) {}
         }
         return Promise.reject(refreshError);

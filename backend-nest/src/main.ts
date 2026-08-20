@@ -9,7 +9,7 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       bodyParser: false,
     });
-
+    
     app.useGlobalFilters(new HttpExceptionFilter());
 
     // Configure body parser with increased limit (15MB)

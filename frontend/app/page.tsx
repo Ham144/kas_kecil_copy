@@ -19,10 +19,12 @@ import { FlowLogApi } from "@/api/flowLog.api";
 import { useRouter } from "next/navigation";
 import { useUserInfo } from "@/components/UserContext";
 import { FlowLogType } from "@/types/flowLog";
+import { Role } from "@/types/role.type";
 
 export default function Home() {
   const router = useRouter();
   const { userInfo } = useUserInfo();
+  const isKasir = userInfo?.role === Role.KASIR;
   const { data: recentFlowLogs } = useQuery({
     queryKey: ["flowLogs"],
     queryFn: async () =>
@@ -150,14 +152,16 @@ export default function Home() {
                     <ChartBarIcon className="h-5 w-5" />
                     Simple Analytic
                   </Button>
-                  <Button
-                    onClick={() => router.push("/setup")}
-                    variant="outline"
-                    className="w-full justify-start gap-3 rounded-lg py-3 flex items-center"
-                  >
-                    <Settings className="h-5 w-5" />
-                    Pengaturan
-                  </Button>
+                  {!isKasir && (
+                    <Button
+                      onClick={() => router.push("/setup")}
+                      variant="outline"
+                      className="w-full justify-start gap-3 rounded-lg py-3 flex items-center"
+                    >
+                      <Settings className="h-5 w-5" />
+                      Pengaturan
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => router.push("/admin/flow")}

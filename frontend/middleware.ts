@@ -2,6 +2,26 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { Role } from "./types/role.type";
 
+function normalizeRole(role?: string | null): string {
+  return String(role || "").toUpperCase();
+}
+
+function canAccessPath(pathname: string, allowedPaths: string[]): boolean {
+  return allowedPaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    return JSON.parse(Buffer.from(payload, "base64").toString());
+  } catch {
+    return null;
+  }
+}
+
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("access_token")?.value;
   const refreshToken = req.cookies.get("refresh_token")?.value;
@@ -20,7 +40,13 @@ export function middleware(req: NextRequest) {
     "/revenue",
   ];
   //page hanya bisa dikunjugi office:mengandung "WL"
-  const kasir_only = ["/", "/expense", "/revenue"];
+  const kasir_only = [
+    "/",
+    "/expense",
+    "/revenue",
+    "/admin/flow",
+    "/admin/stats",
+  ];
 
   // Jika di halaman login, biarkan lewat (tidak perlu check token)
   if (pathname === "/login") {
@@ -29,9 +55,13 @@ export function middleware(req: NextRequest) {
 
   // Jika tidak ada access_token
   if (!token) {
-    // Jika ada refresh_token, biarkan lewat (biarkan axios handle refresh saat API call)
+    const refreshPayload = refreshToken ? decodeJwtPayload(refreshToken) : null;
+    const refreshExp = Number(refreshPayload?.exp);
+    const refreshIsValid = !!refreshToken && (!refreshExp || refreshExp * 1000 > Date.now());
+
+    // Jika ada refresh_token yang masih valid, biarkan lewat
     // Axios interceptor akan otomatis refresh token jika diperlukan
-    if (refreshToken) {
+    if (refreshIsValid) {
       return NextResponse.next();
     }
     // Jika tidak ada keduanya, redirect ke login
@@ -58,21 +88,21 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    const role = decoded?.role;
+    const role = normalizeRole(decoded?.role);
 
     // === Role checking ===
-    if (role === Role.IT || decoded?.description === "IT") {
+    if (role === Role.IT || decoded?.description?.toUpperCase() === "IT") {
       return NextResponse.next();
     }
 
-    if (role == Role.ADMIN) {
-      if (admin_only.includes(pathname)) {
+    if (role === Role.ADMIN) {
+      if (canAccessPath(pathname, admin_only)) {
         return NextResponse.next();
       }
     }
 
-    if (role == Role.KASIR) {
-      if (kasir_only.includes(pathname)) {
+    if (role === Role.KASIR) {
+      if (canAccessPath(pathname, kasir_only)) {
         return NextResponse.next();
       }
     }
@@ -80,8 +110,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   } catch (err) {
     // Token invalid/malformed
-    // Jika ada refresh_token, biarkan lewat (biarkan axios handle refresh)
-    if (refreshToken) {
+    const refreshPayload = refreshToken ? decodeJwtPayload(refreshToken) : null;
+    const refreshExp = Number(refreshPayload?.exp);
+    const refreshIsValid = !!refreshToken && (!refreshExp || refreshExp * 1000 > Date.now());
+
+    // Jika ada refresh_token yang masih valid, biarkan lewat
+    if (refreshIsValid) {
       return NextResponse.next();
     }
     // Token invalid dan tidak ada refresh_token, redirect ke login

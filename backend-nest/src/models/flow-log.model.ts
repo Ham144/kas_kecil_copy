@@ -23,6 +23,12 @@ export class FlowLogCreateDto {
   category: string;
 }
 
+export class FLowLogUpdate {
+  note?: string;
+  date?: string;
+  category?: string;
+}
+
 export enum FlowLogType {
   IN = 'IN',
   OUT = 'OUT',

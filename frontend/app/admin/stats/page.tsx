@@ -128,6 +128,7 @@ export default function StatsPage() {
   const [isErrorAnalytic, setIsErrorAnalytic] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const { userInfo } = useUserInfo();
+  const isKasir = userInfo?.role === Role.KASIR;
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
   const [filter, setFilter] = useState<GetAnalyticFilter>(() => {
     const today = new Date();
@@ -136,7 +137,7 @@ export default function StatsPage() {
     const day = String(today.getDate()).padStart(2, "0");
     return {
       selectedDate: `${year}-${month}-${day}`,
-      selectedWarehouseId: userInfo?.warehouseId || "all",
+      selectedWarehouseId: "all",
     };
   });
 
@@ -161,6 +162,15 @@ export default function StatsPage() {
   });
 
   useEffect(() => {
+    if (isKasir && userInfo?.warehouseId) {
+      setFilter((prev) => ({
+        ...prev,
+        selectedWarehouseId: userInfo.warehouseId,
+      }));
+    }
+  }, [isKasir, userInfo?.warehouseId]);
+
+  useEffect(() => {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -172,27 +182,19 @@ export default function StatsPage() {
       setFilter((prev) => ({
         ...prev,
         selectedDate: localDate,
-        selectedWarehouseId:
-          prev.selectedWarehouseId === "all"
-            ? userInfo?.warehouseId || "all"
-            : prev.selectedWarehouseId,
       }));
     } else if (modePeriod === ModePeriod.MONTH) {
       setFilter((prev) => ({
         ...prev,
         selectedDate: localMonth,
-        selectedWarehouseId:
-          prev.selectedWarehouseId === "all"
-            ? userInfo?.warehouseId || "all"
-            : prev.selectedWarehouseId,
       }));
     } else {
-      setFilter({
+      setFilter((prev) => ({
+        ...prev,
         selectedDate: localDate,
-        selectedWarehouseId: userInfo?.warehouseId || "all",
-      });
+      }));
     }
-  }, [modePeriod, userInfo?.warehouseId]);
+  }, [modePeriod]);
 
   const inputClass =
     "mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
@@ -272,24 +274,31 @@ export default function StatsPage() {
               </label>
               <select
                 value={filter.selectedWarehouseId}
-                disabled={
-                  userInfo?.role === Role.KASIR &&
-                  userInfo?.description !== "IT"
-                }
+                disabled={isKasir}
                 onChange={(e) =>
                   setFilter((prev) => ({
                     ...prev,
                     selectedWarehouseId: e.target.value,
                   }))
                 }
-                className={inputClass}
+                className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-70`}
               >
-                <option value="all">Semua Warehouse</option>
-                {warehouses?.map((w: Warehouse) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
+                {isKasir ? (
+                  userInfo?.warehouseId && (
+                    <option value={userInfo.warehouseId}>
+                      {userInfo.warehouse?.name || "Warehouse saya"}
+                    </option>
+                  )
+                ) : (
+                  <>
+                    <option value="all">Semua Warehouse</option>
+                    {warehouses?.map((w: Warehouse) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
           </div>

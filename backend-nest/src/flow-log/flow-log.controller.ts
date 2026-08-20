@@ -7,18 +7,24 @@ import {
   UseInterceptors,
   UploadedFiles,
   BadRequestException,
+  Patch,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { FlowLogService } from './flow-log.service';
-import { FlowLogCreateDto, GetAnalyticFilter } from 'src/models/flow-log.model';
+import { FlowLogCreateDto, FLowLogUpdate, GetAnalyticFilter } from 'src/models/flow-log.model';
 import { Auth } from 'src/common/auth.decorator';
 import { multerMemoryConfig } from 'src/common/multer.config';
 import { RedisService } from 'src/redis/redis.service';
 import { TokenPayload } from 'src/models/tokenPayload.model';
 import { BucketUploadService } from 'src/common/bucket-upload.service';
+import { normalizeSelectedDateKey } from 'src/common/selected-date.util';
 
 @Controller('/api/flow-log')
 export class FlowLogController {
+  private readonly analyticCachePrefix = 'analytic:v2';
+
   constructor(
     private readonly flowLogService: FlowLogService,
     private readonly redisService: RedisService,
@@ -45,14 +51,16 @@ export class FlowLogController {
     @Body() createFlowLogDto: FlowLogCreateDto,
     @Auth() userInfo: any,
   ) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-
     const warehouseId = createFlowLogDto.warehouseId;
-    const cacheKeyMonth = `analytic:${warehouseId}:${year}-${month}`;
-    const cacheKeyDay = `analytic:${warehouseId}:${year}-${month}-${day}`;
+    const logDate = new Date(createFlowLogDto.date);
+    const fallbackDate = new Date();
+    const sourceDate = Number.isNaN(logDate.getTime()) ? fallbackDate : logDate;
+    const year = sourceDate.getUTCFullYear();
+    const month = String(sourceDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(sourceDate.getUTCDate()).padStart(2, '0');
+
+    const cacheKeyMonth = `${this.analyticCachePrefix}:${warehouseId}:${year}-${month}`;
+    const cacheKeyDay = `${this.analyticCachePrefix}:${warehouseId}:${year}-${month}-${day}`;
 
     if (warehouseId) {
       await this.redisService.del(cacheKeyMonth);
@@ -91,9 +99,16 @@ export class FlowLogController {
   }
 
   @Get('/analytic')
-  async getAnalytics(@Query() filter: GetAnalyticFilter) {
-    //cek redis first
-    const cacheKey = `analytic:${filter.selectedWarehouseId}:${filter.selectedDate}`;
+  async getAnalytics(
+    @Query() filter: GetAnalyticFilter,
+    @Auth() userInfo: TokenPayload,
+  ) {
+    if (userInfo.role === 'KASIR') {
+      filter.selectedWarehouseId = userInfo.warehouseId;
+    }
+
+    const normalizedSelectedDate = normalizeSelectedDateKey(filter.selectedDate);
+    const cacheKey = `${this.analyticCachePrefix}:${filter.selectedWarehouseId}:${normalizedSelectedDate}`;
 
     const cachedResult = await this.redisService.get(cacheKey);
     if (cachedResult) {
@@ -112,5 +127,19 @@ export class FlowLogController {
       24 * 60 * 60000, // 24 jam dalam milidetik
     );
     return data;
+  }
+
+  @Patch(':id')
+  async updateFlow(
+    @Param('id') id: string,
+    @Body() body: FLowLogUpdate,
+    @Auth() userInfo: TokenPayload,
+  ) {
+    return this.flowLogService.updateFlow(id, body, userInfo);
+  }
+  
+  @Delete(':id')
+  async deleteFlow(@Param('id') id: string, @Auth() userInfo: TokenPayload) {
+    return this.flowLogService.deleteFlow(id, userInfo);
   }
 }

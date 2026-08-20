@@ -4,6 +4,8 @@ import {
   CreateFlowLogDto,
   GetAnalyticFilter,
   RecentFlowLogsFilter,
+  FlowLogApiResponse,
+  UpdateFlowLogDto,
 } from "@/types/flowLog";
 
 export const FlowLogApi = {
@@ -38,7 +40,7 @@ export const FlowLogApi = {
 
     if (filter.limit) params.set("limit", filter.limit.toString());
     if (filter.lightMode) params.set("lightMode", filter.lightMode.toString());
-
+    
     const res = await axiosInstance.get("/api/flow-log", { params });
     return res?.data?.data;
   },
@@ -54,4 +56,22 @@ export const FlowLogApi = {
     const res = await axiosInstance.get("/api/flow-log/analytic", { params });
     return res?.data;
   },
+
+  updateFlow: async (
+    id: string,
+    body: UpdateFlowLogDto,
+  ) => {
+    const res = await axiosInstance.patch<FlowLogApiResponse<unknown>>(
+      `/api/flow-log/${id}`,
+      body,
+    );
+    return res.data
+  },
+  deleteFlow: async (id: string) => {
+    const res = await axiosInstance.delete<FlowLogApiResponse<unknown>>(
+      `/api/flow-log/${id}`,
+    );
+    return res.data
+  }
+  
 };

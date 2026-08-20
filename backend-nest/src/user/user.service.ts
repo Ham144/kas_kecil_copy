@@ -367,14 +367,22 @@ export class UserService {
 
   async logout(access_token: string, req: any) {
     if (!access_token) {
-      console.log('delete refresh_token dan access_token');
+      return {
+        message: 'logout without access token',
+      };
     }
-    const oldPayload: TokenPayload = await jwt.verify(
-      access_token,
-      process.env.JWT_SECRET,
-    );
 
-    await this.redis.del(oldPayload.jti);
+    try {
+      const oldPayload: TokenPayload = await jwt.verify(
+        access_token,
+        process.env.JWT_SECRET,
+      );
+      await this.redis.del(oldPayload.jti);
+    } catch (error) {
+      // If the access token is already expired or invalid, we still allow logout
+      // so the controller can clear cookies and the client can recover cleanly.
+    }
+
     return {
       message: 'redis jti deleted',
     };

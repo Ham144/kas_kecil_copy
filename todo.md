@@ -1,17 +1,17 @@
 start time: 23/10/2025
 konsep:
 setup WareHouse dan target biaya : e.g: mangga dua 23.000.000
-setup kas: 
+setup kas:
 setup biaya apa saja: parkir, BBM
 
-[x] redis with postgresql setup 
+[x] redis with postgresql setup
 [x] auth
 [x] WareHouse
 [x] budgets
 [x] Flow Log category
 [x] global setting
 [x] register expense
-[x] statistic graph 
+[x] statistic graph
 [x] register revenue
 [x] admin flow detail logs
 [x] filtering /flow masih belum beres
@@ -19,14 +19,14 @@ setup biaya apa saja: parkir, BBM
 [x] filtering flow per hari
 [x] tidak boleh melihat data warehouse lain jika description bukan IT
 [x] export data flow logs
-[x] caching redis download 
+[x] caching redis download
 [x] endpoint refresh token perlu perbaikan
 [x] fix: upload attachments
 [x] add: caching redis hitungan statistic
 [x] single warehouse setup berdasar description
 [x] ganti alamat db postgresql
 
-[x] add: role ["ADMIN", "KASIR", "IT"] (bisa edit di /accounts) 
+[x] add: role ["ADMIN", "KASIR", "IT"] (bisa edit di /accounts)
 [x] add: field date untuk revenue & expense
 [x] add: filtering recent flow untuk "KASIR"
 [x] mod: perbaiki tampilan recent flow
@@ -36,7 +36,10 @@ setup biaya apa saja: parkir, BBM
 [x] add: category tidak berbagi tapi terkait dengan warehouse tertentu
 [x] add: budget terkait ke category bukan warehouse, artinya 1 warehouse punya multi budget sejumlah category
 
-
 //fix 13 maret 2026
 [x] fix: filter warehouse tidak berfungsi di /admin/stats
 [x] fix: filter bulan harusnya berdasarkan date yg dipilih saat buat bukan createdAt dari DB
+
+# 20-08-2026
+[x] admin boleh modifikasi dan hapus log
+[x] kasir hanya boleh modifikasi tanggal

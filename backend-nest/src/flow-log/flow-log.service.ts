@@ -1,16 +1,19 @@
 import {
   BadRequestException,
+  ForbiddenException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   AnalyticResponseDto,
   FlowLogType,
+  FLowLogUpdate,
   GetAnalyticFilter,
   RecentFlowLogsFilter,
 } from 'src/models/flow-log.model'; // Use local model
 import { PrismaService } from 'src/common/prisma.service';
-import { ErrorResponse } from 'src/models/error.model';
+import { ErrorResponse, SimpleSuccess } from 'src/models/error.model';
 import {
   FlowLogCreateDto,
   FlowlogResponseDto,
@@ -20,15 +23,47 @@ import { RedisService } from 'src/redis/redis.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TokenPayload } from 'src/models/tokenPayload.model';
-import { Prisma } from '@prisma/client';
+import { Prisma, ROLE } from '@prisma/client';
+import { isAllQueryValue } from 'src/common/query-value.util';
+import { parseSelectedDateRange } from 'src/common/selected-date.util';
 
 @Injectable()
 export class FlowLogService {
+  private readonly analyticCachePrefix = 'analytic:v2';
+
   constructor(
     private readonly prismaService: PrismaService,
     private generateCsvService: GenerateCsvService,
     private redisService: RedisService,
   ) {}
+
+  private isPrivilegedRole(role: ROLE) {
+    return (
+      role === ROLE.ADMIN ||
+      role === ROLE.IT ||
+      role === ROLE.SUPERVISION
+    );
+  }
+
+  private async invalidateAnalyticsCache(
+    warehouseId: string,
+    date: Date,
+  ): Promise<void> {
+    if (!warehouseId || !date || Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    
+    await Promise.all([
+      this.redisService.del(`${this.analyticCachePrefix}:${warehouseId}:${year}-${month}`),
+      this.redisService.del(
+        `${this.analyticCachePrefix}:${warehouseId}:${year}-${month}-${day}`,
+      ),
+    ]);
+  }
 
   async createExpenseOrRevenue(
     createFlowLogDto: FlowLogCreateDto,
@@ -127,13 +162,14 @@ export class FlowLogService {
       const where: Prisma.FlowLogWhereInput = {};
 
       // ? Filter dasar
-      if (type !== FlowLogType.ALL) {
-        where.type = type;
+      const normalizedType = type?.toString().toUpperCase();
+      if (normalizedType && normalizedType !== FlowLogType.ALL) {
+        where.type = normalizedType as 'IN' | 'OUT';
       }
-      if (category != 'all' && category) {
+      if (category && !isAllQueryValue(category)) {
         where.categoryId = String(category);
       }
-      if (warehouse && warehouse !== 'all') {
+      if (warehouse && !isAllQueryValue(warehouse)) {
         where.warehouseId = warehouse;
       }
 
@@ -152,65 +188,40 @@ export class FlowLogService {
 
       // ? Filter tanggal berdasarkan bulan dan tahun
       if (selectedDate) {
-        let from: Date;
-        let to: Date;
-        // Asumsi selectedDate: "2025-11" atau "2025-11-01"
-        const [yearStr, monthStr, dateStr] = selectedDate.split('-');
-        const year = Number(yearStr);
-        const month = Number(monthStr); // 1–12
-        const date = Number(dateStr);
-
-        if (!isNaN(year) && !isNaN(month) && !isNaN(date)) {
-          //mode date
-          from = new Date(year, month - 1, date);
-          to = new Date(year, month, new Date().getMonth(), 23, 59, 59, 999);
-          where.createdAt = {
-            gte: from,
-            lte: to,
-          };
-        } else if (!isNaN(year) && !isNaN(month)) {
-          //mode month
-          from = new Date(year, month - 1, 1);
-          to = new Date(year, month, 0, 23, 59, 59, 999);
-
-          where.date = {
-            gte: from,
-            lte: to,
-          };
-        } else {
+        const range = parseSelectedDateRange(selectedDate);
+        if (!range) {
           return new BadRequestException('Invalid date format');
         }
+
+        const { from, to } = range;
+        where.date = {
+          gte: from,
+          lte: to,
+        };
       }
 
       if (isDownload) {
         try {
-          if (this.redisService.get(JSON.stringify(where))) {
-            const csvFile = await this.redisService.get(JSON.stringify(where));
-
-            //make csv in /uploads/report
-            fs.promises.writeFile(
-              path.join(
-                process.cwd(),
-                'uploads',
-                'report',
-                'cached-redis-report.csv',
-              ),
-              csvFile,
+          const cacheKey = JSON.stringify(where);
+          const cachedCsv = await this.redisService.get(cacheKey);
+          if (cachedCsv) {
+            const filename = 'cached-redis-report.csv';
+            const reportPath = path.join(
+              process.cwd(),
+              'uploads',
+              'report',
+              filename,
             );
 
+            //make csv in /uploads/report
+            await fs.promises.writeFile(reportPath, cachedCsv);
+
             setTimeout(() => {
-              fs.promises.unlink(
-                path.join(
-                  process.cwd(),
-                  'uploads',
-                  'report',
-                  'cached-redis-report.csv',
-                ),
-              );
+              fs.promises.unlink(reportPath).catch(() => undefined);
             }, 10000);
 
             return {
-              url: `uploads/report/cached-redis-report.csv`,
+              url: `/uploads/report/${filename}`,
             };
           }
 
@@ -224,21 +235,23 @@ export class FlowLogService {
           });
 
           const csvFile = await this.generateCsvService.generateCsv(logs);
-          await this.redisService.set(JSON.stringify(where), csvFile, 3600); //1 hour
-          //make csv in /uploads/report
-          fs.promises.writeFile(
-            path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
-            csvFile,
+          await this.redisService.set(cacheKey, csvFile, 3600); //1 hour
+          const filename = 'fresh-report.csv';
+          const reportPath = path.join(
+            process.cwd(),
+            'uploads',
+            'report',
+            filename,
           );
+          //make csv in /uploads/report
+          await fs.promises.writeFile(reportPath, csvFile);
 
           setTimeout(() => {
-            fs.promises.unlink(
-              path.join(process.cwd(), 'uploads', 'report', `fresh-report.csv`),
-            );
+            fs.promises.unlink(reportPath).catch(() => undefined);
           }, 10000);
 
           return {
-            url: `uploads/report/fresh-report.csv`,
+            url: `/uploads/report/${filename}`,
           };
         } catch (error) {
           return {
@@ -285,31 +298,22 @@ export class FlowLogService {
   async getAnalytics(filter: GetAnalyticFilter) {
     const { selectedDate, selectedWarehouseId } = filter;
 
-    const [yearStr, monthStr, dateStr] = selectedDate.toString().split('-');
+    const range = parseSelectedDateRange(selectedDate);
+    if (!range) {
+      throw new BadRequestException('Invalid date format');
+    }
 
+    const { from, to } = range;
+    const [yearStr, monthStr] = selectedDate.toString().split('-');
     const currentYear = Number(yearStr);
     const currentMonth = Number(monthStr) - 1;
-
-    let from: Date;
-    let to: Date;
-
-    if (dateStr) {
-      //mode date
-      from = new Date(currentYear, currentMonth, Number(dateStr));
-      to = new Date(currentYear, currentMonth, Number(dateStr), 23, 59, 59);
-    } else {
-      //mode month
-      from = new Date(currentYear, currentMonth, 1);
-      to = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
-    }
 
     // Base filter (bisa diperluas)
     const baseWhere: any = {
       date: { gte: from, lte: to },
     };
 
-    if (selectedWarehouseId && selectedWarehouseId !== 'all') {
-      console.log(selectedWarehouseId);
+    if (selectedWarehouseId && !isAllQueryValue(selectedWarehouseId)) {
       baseWhere.warehouseId = selectedWarehouseId;
     }
     // ??1. Total Inflow
@@ -412,7 +416,7 @@ export class FlowLogService {
     };
 
     // Jika bukan 'all', tambahkan filter berdasarkan warehouseId melalui relasi category
-    if (selectedWarehouseId !== 'all') {
+    if (!isAllQueryValue(selectedWarehouseId)) {
       budgetFilter.category = {
         warehouseId: selectedWarehouseId,
       };
@@ -450,7 +454,7 @@ export class FlowLogService {
       _sum: { amount: true },
       where: {
         createdAt: { gte: startMonth, lte: endMonth },
-        ...(selectedWarehouseId !== 'all' && {
+        ...(!isAllQueryValue(selectedWarehouseId) && {
           warehouseId: selectedWarehouseId,
         }),
       },
@@ -486,7 +490,7 @@ export class FlowLogService {
         year: Number(currentYear),
       };
 
-      if (selectedWarehouseId !== 'all') {
+      if (!isAllQueryValue(selectedWarehouseId)) {
         budgetWhere.category = {
           warehouseId: selectedWarehouseId,
         };
@@ -544,5 +548,167 @@ export class FlowLogService {
     };
 
     return analytics;
+  }
+
+  async updateFlow(
+    id: string,
+    body: FLowLogUpdate,
+    userInfo: TokenPayload,
+  ): Promise<SimpleSuccess | ErrorResponse> {
+    try {
+      const existingFlow = await this.prismaService.flowLog.findUnique({
+        where: {
+          id,
+        },
+      });
+
+      if (!existingFlow) {
+        throw new NotFoundException('Tidak ditemukan dengan id tersebut');
+      }
+
+      if (
+        existingFlow.createdByUsername !== userInfo.username &&
+        !this.isPrivilegedRole(userInfo.role)
+      ) {
+        throw new ForbiddenException('Anda tidak memiliki izin melakukan request ini');
+      }
+
+      const data: Prisma.FlowLogUpdateInput = {};
+
+      if (body.note !== undefined) {
+        data.note = body.note;
+      }
+
+      if (body.date !== undefined) {
+        const nextDate = new Date(body.date);
+        if (Number.isNaN(nextDate.getTime())) {
+          throw new BadRequestException('Invalid date format');
+        }
+        data.date = nextDate;
+      }
+
+      if (body.category !== undefined) {
+        const isValidCategory = await this.prismaService.flowLogCategory.findFirst({
+          where: {
+            id: body.category,
+            warehouseId: existingFlow.warehouseId,
+          },
+        });
+
+        if (!isValidCategory) {
+          throw new BadRequestException(
+            'category tidak termasuk di warehouse dipilih',
+          );
+        }
+
+        data.category = {
+          connect: {
+            id: body.category,
+          },
+        };
+      }
+
+      if (Object.keys(data).length === 0) {
+        throw new BadRequestException('Tidak ada data yang diubah');
+      }
+
+      const updatedFlow = await this.prismaService.flowLog.update({
+        where: {
+          id,
+        },
+        data,
+        include: {
+          warehouse: true,
+          category: true,
+          createdBy: true,
+        },
+      });
+
+      await Promise.all([
+        this.invalidateAnalyticsCache(existingFlow.warehouseId, existingFlow.date),
+        this.invalidateAnalyticsCache(updatedFlow.warehouseId, updatedFlow.date),
+      ]);
+
+      return {
+        statusCode: 200,
+        message: 'berhasil update flow',
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        const message =
+          typeof response === 'string'
+            ? response
+            : (response as { message?: string }).message || error.message;
+
+        return {
+          statusCode: error.getStatus(),
+          message,
+        };
+      }
+
+      return {
+        statusCode: 500,
+        message: error?.message || 'Terjadi kesalahan server saat update flow',
+      }
+    }
+  }
+  
+  async deleteFlow(
+    id: string,
+    userInfo: TokenPayload,
+  ): Promise<SimpleSuccess | ErrorResponse> {
+    try {
+      const logToDelete = await this.prismaService.flowLog.findUnique({
+        where: {
+          id: id,
+        },
+      });
+
+      if (!logToDelete) {
+        throw new NotFoundException('Tidak ditemukan dengan id tersebut');
+      }
+
+      if (
+        logToDelete.createdByUsername !== userInfo.username &&
+        !this.isPrivilegedRole(userInfo.role)
+      ) {
+        throw new ForbiddenException('Anda tidak memiliki izin melakukan request ini');
+      }
+
+      await this.prismaService.flowLog.delete({
+        where: {
+          id: id,
+        },
+      });
+
+      await this.invalidateAnalyticsCache(
+        logToDelete.warehouseId,
+        logToDelete.date,
+      );
+
+      return {
+        statusCode: 200,
+        message: 'Berhasil menghapus',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        const message =
+          typeof response === 'string'
+            ? response
+            : (response as { message?: string }).message || error.message;
+
+        return {
+          statusCode: error.getStatus(),
+          message,
+        };
+      }
+
+      return {
+        statusCode: 500,
+        message: error?.message || 'Terjadi kesalahan server',
+      }
+    }
   }
 }

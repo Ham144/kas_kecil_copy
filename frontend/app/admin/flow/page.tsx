@@ -28,11 +28,13 @@ import { FlowLogCategoryApi } from "@/api/category.api";
 import { WarehouseApi } from "@/api/warehouse";
 import { useUserInfo } from "@/components/UserContext";
 import { toast } from "sonner";
-import { BASE_URL } from "@/lib/constant";
+import { getAttachmentUrl } from "@/lib/attachment";
 import { FlowLogDetailDialog } from "@/components/flow-log-detail-dialog";
+import { Role } from "@/types/role.type";
 
 export default function CashFlow() {
   const { userInfo } = useUserInfo();
+  const isKasir = userInfo?.role === Role.KASIR;
   const [modePeriod, setModePeriod] = useState<ModePeriod>(ModePeriod.MONTH);
   const [selectedLog, setSelectedLog] = useState<FlowLog | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -62,6 +64,7 @@ export default function CashFlow() {
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses"],
     queryFn: () => WarehouseApi.getWarehouses(),
+    enabled: !isKasir,
   });
 
   const {
@@ -73,6 +76,13 @@ export default function CashFlow() {
     queryFn: () => FlowLogApi.getRecentFlowLogs(filter),
     enabled: !!userInfo?.warehouseId,
   });
+
+  useEffect(() => {
+    if (!userInfo?.warehouseId) return;
+    if (isKasir) {
+      setFilter((prev) => ({ ...prev, warehouse: userInfo.warehouseId }));
+    }
+  }, [userInfo?.warehouseId, isKasir]);
 
   useEffect(() => {
     if (modePeriod === ModePeriod.DATE) {
@@ -88,6 +98,14 @@ export default function CashFlow() {
     }
   }, [modePeriod]);
 
+  const resetFilter = () => {
+    setFilter({
+      ...initialFilter,
+      warehouse: isKasir ? userInfo?.warehouseId : "all",
+      page: 1,
+    });
+  };
+
   const handleExportCSV = async () => {
     try {
       const downloadURL = await FlowLogApi.getRecentFlowLogs({
@@ -98,9 +116,7 @@ export default function CashFlow() {
         toast.error("File tidak tersedia");
         return;
       }
-      const baseUrl = (BASE_URL || "").replace(/\/+$/, "");
-      const urlPart = (downloadURL?.url || "").replace(/^\/+/, "");
-      const fullUrl = `${baseUrl}/${urlPart}`.trim();
+      const fullUrl = getAttachmentUrl(downloadURL.url);
       const newTab = window.open(fullUrl, "_blank", "noopener,noreferrer");
       setTimeout(() => {
         if (!newTab?.closed) newTab?.close();
@@ -220,17 +236,28 @@ export default function CashFlow() {
                 </label>
                 <select
                   value={filter.warehouse}
+                  disabled={isKasir}
                   onChange={(e) =>
                     setFilter({ ...filter, warehouse: e.target.value, page: 1 })
                   }
-                  className={inputClass}
+                  className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-70`}
                 >
-                  <option value="all">Semua Warehouse</option>
-                  {warehouses?.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
+                  {isKasir ? (
+                    userInfo?.warehouseId && (
+                      <option value={userInfo.warehouseId}>
+                        {userInfo.warehouse?.name || "Warehouse saya"}
+                      </option>
+                    )
+                  ) : (
+                    <>
+                      <option value="all">Semua Warehouse</option>
+                      {warehouses?.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -277,7 +304,7 @@ export default function CashFlow() {
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => setFilter(initialFilter)}
+                onClick={resetFilter}
                 className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
               >
                 Reset Filter

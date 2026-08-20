@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma.service';
 import { flowCategoryCreateDto } from 'src/models/flow-category.model';
 import { TokenPayload } from 'src/models/tokenPayload.model';
+import { isAllQueryValue } from 'src/common/query-value.util';
 
 //Expense category
 @Injectable()
@@ -52,7 +53,10 @@ export class FlowLogCategoryService {
     // const { selectedWarehouseId, searchKey } = filter;
     const where: Prisma.FlowLogCategoryWhereInput = {};
 
-    if (filter.selectedWarehouseId && filter.selectedWarehouseId !== 'all') {
+    if (
+      filter.selectedWarehouseId &&
+      !isAllQueryValue(filter.selectedWarehouseId)
+    ) {
       where.warehouseId = filter.selectedWarehouseId;
     }
     if (filter.searchKey) {
